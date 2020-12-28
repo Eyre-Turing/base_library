@@ -1,0 +1,1 @@
+已经写出MinGW编译器的Makefile，使用mingw32-make即可编译，如果需要修改为Linux下的make编译，稍微修改Makefile即可。
