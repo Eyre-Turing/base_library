@@ -2,7 +2,7 @@
  * Class ByteArray can save any data as byte array.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-26 13:03.
+ * Last edit: 2020-12-29 14:55.
  */
 
 #include "byte_array.h"
@@ -12,6 +12,8 @@
 #include <string.h>
 #include <algorithm>
 
+#define NEED_ADD	1	//means m_serve is at least how much bigger than m_size.
+
 ByteArray::ByteArray(unsigned int serve) : m_serve(serve), m_size(0)
 {
 	if(m_serve == 0xffffffff)
@@ -20,7 +22,7 @@ ByteArray::ByteArray(unsigned int serve) : m_serve(serve), m_size(0)
 	}
 	else
 	{
-		++m_serve;
+		m_serve += NEED_ADD;
 	}
 	m_data = (char *) malloc(m_serve);
 
@@ -50,14 +52,12 @@ bool ByteArray::set(const char *str, unsigned int size)
 {
 	free(m_data);
 
-	int needAdd = 1;
 	if(size == 0xffffffff)
 	{
 		size = strlen(str);
-		//needAdd = 1;
 	}
 	m_size = size;
-	m_serve = size+needAdd;
+	m_serve = size+NEED_ADD;
 	m_data = (char *) malloc(m_serve);
 
 	bool status = true;
@@ -123,19 +123,17 @@ bool ByteArray::append(const ByteArray &b)
 
 bool ByteArray::append(const char *str, unsigned int size)
 {
-	int needAdd = 1;
 	if(size == 0xffffffff)
 	{
 		size = strlen(str);
-		//needAdd = 1;
 	}
 	unsigned int serve = m_serve;
 	unsigned int needSize = m_size+size;
-	if(serve < needSize+needAdd)
+	if(serve < needSize+NEED_ADD)
 	{
-		if(serve*2 < needSize+needAdd)
+		if(serve*2 < needSize+NEED_ADD)
 		{
-			serve = needSize+needAdd;
+			serve = needSize+NEED_ADD;
 		}
 		else
 		{
@@ -145,7 +143,7 @@ bool ByteArray::append(const char *str, unsigned int size)
 		if(reserve(serve))
 		{
 			memcpy(m_data+m_size, str, size);
-			memset(m_data+m_size+size, 0, m_serve-m_size-size);
+			//memset(m_data+m_size+size, 0, m_serve-m_size-size);
 			m_size = needSize;
 			return true;
 		}
@@ -157,7 +155,7 @@ bool ByteArray::append(const char *str, unsigned int size)
 	else
 	{
 		memcpy(m_data+m_size, str, size);
-		memset(m_data+m_size+size, 0, m_serve-m_size-size);
+		//memset(m_data+m_size+size, 0, m_serve-m_size-size);
 		m_size = needSize;
 		return true;
 	}
@@ -335,10 +333,15 @@ bool ByteArray::reserve(unsigned int s)
 	{
 		m_data = temp_data;
 		m_serve = s;
-		if(m_size > m_serve)
+		if(m_size > m_serve-NEED_ADD)
 		{
-			m_size = m_serve;
+#if EYRE_WARNING
+			fprintf(stderr, "warning: ByteArray(%p) leak! size: %d, serve: %d.\n",
+					this, m_size, m_serve);
+#endif
+			m_size = m_serve-NEED_ADD;
 		}
+		memset(m_data+m_size, 0, m_serve-m_size);
 		return true;
 	}
 	else
