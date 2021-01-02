@@ -1,31 +1,44 @@
 # For build all eyre_turing_lib and test.
 
-# LIBNEED is which lib you want to build.
-LIBNEED = framework
+# Input windows or linux.
+SYSTEM = windows
 
 # RELEASE_MODE input static or shared.
 RELEASE_MODE = static
 
+# LIBNEED is which lib you want to build.
+ifeq ($(RELEASE_MODE),static)
+LIBNEED = network framework
+else
+LIBNEED = framework network
+endif
+
+# Input which system lib compile link need.
+SYSTEM_LIB_LINK = -lpthread
+ifeq ($(SYSTEM),windows)
+SYSTEM_LIB_LINK += -lws2_32
+endif
+
 # Like input -m32 for compilation a 32bit lib.
 COMPILE_OPTION = 
-
-# STATIC_LIB_SUFFIX is what suffix whth static lib.
-STATIC_LIB_SUFFIX = .a
-
-# SHARED_LIB_PREFIX is what prefix whth shared lib.
-SHARED_LIB_PREFIX = 
-
-# SHARED_LIB_SUFFIX is what suffix with shared lib.
-SHARED_LIB_SUFFIX = .dll
-
-# MAKE is your compilation tool command name.
-MAKE = mingw32-make
 
 # RM is your delete file tool command name.
 RM = rm -f
 
 ################################################################
 # Don't change any of the following.
+
+ifeq ($(SYSTEM),windows)
+MAKE = mingw32-make
+SHARED_LIB_SUFFIX = .dll
+SHARED_LIB_PREFIX = 
+STATIC_LIB_SUFFIX = .a
+else
+MAKE = make
+SHARED_LIB_SUFFIX = .so
+SHARED_LIB_PREFIX = lib
+STATIC_LIB_SUFFIX = .a
+endif
 
 TARGET = test
 OBJECT = test.o
@@ -41,7 +54,7 @@ endif
 
 $(TARGET) : $(OBJECT) $(MAKELIB_OBJ)
 ifeq ($(RELEASE_MODE),static)
-	g++ $(COMPILE_OPTION) $^ $(MAKELIB_INC) -o $@
+	g++ $(COMPILE_OPTION) $^ $(MAKELIB_INC) $(SYSTEM_LIB_LINK) -o $@
 else
 	g++ $(COMPILE_OPTION) $(OBJECT) $(MAKELIB_LINK) $(MAKELIB_INC) -o $@
 endif
@@ -50,10 +63,10 @@ endif
 	g++ -c $(COMPILE_OPTION) $< $(MAKELIB_INC) -o $@
 
 %$(STATIC_LIB_SUFFIX) :
-	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) static
+	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) SYSTEM=$(SYSTEM) static
 
 %$(SHARED_LIB_SUFFIX) :
-	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) shared
+	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) SYSTEM=$(SYSTEM) shared
 
 .PHONY clean:
 clean :
