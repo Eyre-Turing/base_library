@@ -2,14 +2,18 @@
  * Class File can read and write file as ByteArray.
  * 
  * Author: Eyre Turing.
- * Last edit: 2020-12-26 16:57.
+ * Last edit: 2021-01-02 16:27.
  */
 
 #include "eyre_file.h"
 #include "general.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
 #include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 File::File(const String &filename)
 {

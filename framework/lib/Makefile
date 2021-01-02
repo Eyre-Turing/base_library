@@ -1,5 +1,7 @@
 # For build framework lib.
 
+SYSTEM = windows
+
 SHOWINFO = -DEYRE_DEBUG=1 -DEYRE_WARNING=1 -DEYRE_DETAIL=0
 BYTEARRAY_SERVE = 
 CODEC_SYS = 
