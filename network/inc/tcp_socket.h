@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-02 17:10.
+ * Last edit: 2021-01-03 18:58.
  */
 
 #ifdef _WIN32
@@ -24,6 +24,9 @@
 #define TCP_SOCKET_DISCONNECTED	0
 #define TCP_SOCKET_CONNECTED	1
 
+class TcpServer;
+#include "tcp_server.h"
+
 class TcpSocket
 {
 public:
@@ -34,7 +37,7 @@ public:
 	TcpSocket();
 	virtual ~TcpSocket();
 	
-	void connectToHost(const char *addr, unsigned int port, int family=AF_INET);
+	void connectToHost(const char *addr, unsigned short port, int family=AF_INET);
 	void abort();
 	
 	void write(const ByteArray &data) const;
@@ -53,11 +56,17 @@ public:
 		static void *readThread(void *s);
 	};
 	
+	friend class TcpServer;
+	
 private:
 #ifdef _WIN32
 	WSADATA m_wsadata;
-#endif
+	char *recvBuffer;
+	int recvBufferSize;
+	SOCKET m_sockfd;
+#else
 	int m_sockfd;
+#endif
 	struct addrinfo *m_res;
 	int m_connectStatus;
 	
@@ -68,6 +77,10 @@ private:
 	Disconnected m_onDisconnected;
 	Connected m_onConnected;
 	Read m_onRead;
+	
+	TcpServer *m_server;
+	
+	TcpSocket(TcpServer *server, int sockfd);
 };
 
 #endif	//TCP_SOCKET_H 
