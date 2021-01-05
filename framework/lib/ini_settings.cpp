@@ -4,7 +4,7 @@
  * Class IniParse can parse ini format configure String.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-28 16:04.
+ * Last edit: 2021-01-05 15:17.
  */
 
 #include "ini_settings.h"
@@ -341,6 +341,7 @@ IniSettings &IniSettings::operator=(const IniSettings &s)
 	m_file = s.m_file;
 	m_iniParse = s.m_iniParse;
 	m_codec = s.m_codec;
+	return *this;
 }
 
 bool IniSettings::cleanParent(const String &parent)

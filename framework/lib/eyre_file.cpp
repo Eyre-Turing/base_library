@@ -34,6 +34,7 @@ File &File::operator=(const File &f)
 	m_filename = f.m_filename;
 	m_file = NULL;
 	m_openMode = FILE_OPEN_MODE_No;
+	return *this;
 }
 
 File::~File()

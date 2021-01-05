@@ -2,7 +2,7 @@
  * Some general algorithm.
  * 
  * Author: Eyre Turing.
- * Last edit: 2020-12-23 13:40.
+ * Last edit: 2021-01-05 15:36.
  */
 
 #include "general.h"
@@ -273,7 +273,7 @@ int GbkToUtf8(char *str_str, size_t src_len, char *dst_str, size_t dst_len)
 	if (iconv(cd, pin, &src_len, pout, &dst_len) == -1)
 		return -1;
 	iconv_close(cd);
-	*pout = '\0';
+	**pout = '\0';
 
 	return 0;
 }
@@ -291,7 +291,7 @@ int Utf8ToGbk(char *src_str, size_t src_len, char *dst_str, size_t dst_len)
 	if (iconv(cd, pin, &src_len, pout, &dst_len) == -1)
 		return -1;
 	iconv_close(cd);
-	*pout = '\0';
+	**pout = '\0';
 
 	return 0;
 }

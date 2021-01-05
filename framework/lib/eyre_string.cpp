@@ -5,7 +5,7 @@
  * copy and convert into system codec to print.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-28 11:13.
+ * Last edit: 2021-01-05 15:24.
  */
 
 #include "eyre_string.h"
@@ -267,6 +267,7 @@ bool String::append(const char *str, StringCodec codec)
 #if EYRE_DEBUG
 		fprintf(stderr, "String(%p)::append(const char*, StringCodec) unknow codec: \'%d\'!\n", this, codec);
 #endif
+		return false;
 	}
 }
 
