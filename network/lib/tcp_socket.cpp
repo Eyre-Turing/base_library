@@ -3,7 +3,7 @@
  * The call back function `Read` will exec in a subthread.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-02 17:16.
+ * Last edit: 2021-01-03 19:50.
  */
 
 #include "tcp_socket.h"
@@ -75,6 +75,9 @@ void *TcpSocket::Thread::readThread(void *s)
 
 TcpSocket::TcpSocket()
 {
+	m_res = NULL;
+	m_server = NULL;
+	
 	m_onDisconnected = NULL;
 	m_onConnected = NULL;
 	m_onRead = NULL;
@@ -86,18 +89,48 @@ TcpSocket::TcpSocket()
 	{
 		fprintf(stderr, "TcpSocket(%p) WSAStartup() fail!\n", this);
 	}
+	recvBuffer = NULL;
+#endif
+}
+
+TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd(sockfd)
+{
+	m_res = NULL;
+	
+	m_onDisconnected = NULL;
+	m_onConnected = NULL;
+	m_onRead = NULL;
+	
+	m_connectStatus = TCP_SOCKET_CONNECTED;
+	
+#ifdef _WIN32
+	int optLen = sizeof(recvBufferSize);
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (char *) &recvBufferSize, &optLen);
+	recvBuffer = (char *) malloc(recvBufferSize+1);
 #endif
 }
 
 TcpSocket::~TcpSocket()
-{	
+{
+	abort();
 #ifdef _WIN32
-	WSACleanup();
+	if(m_server)
+	{
+		free(recvBuffer);
+	}
+	else
+	{
+		WSACleanup();
+	}
 #endif
 }
 
-void TcpSocket::connectToHost(const char *addr, unsigned int port, int family)
+void TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 {
+	if(m_server)
+	{
+		return ;
+	}
 	abort();
 	struct addrinfo hints = {0};
 	hints.ai_socktype = SOCK_STREAM;
@@ -125,18 +158,28 @@ void TcpSocket::abort()
 		return ;
 	}
 	
-	freeaddrinfo(m_res);
+	if(m_res)
+	{
+		freeaddrinfo(m_res);
+	}
 	
+	if(m_server)
+	{
+		m_server->removeClient(m_sockfd);
+	}
+	else
+	{
 #ifdef _WIN32
-	closesocket(m_sockfd);
+		closesocket(m_sockfd);
 #else
-	close(m_sockfd);
+		close(m_sockfd);
 #endif	//_WIN32
 
-	m_connectStatus = TCP_SOCKET_DISCONNECTED;
-	if(m_onDisconnected)
-	{
-		m_onDisconnected(this);
+		m_connectStatus = TCP_SOCKET_DISCONNECTED;
+		if(m_onDisconnected)
+		{
+			m_onDisconnected(this);
+		}
 	}
 }
 

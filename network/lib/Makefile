@@ -2,6 +2,8 @@
 
 SYSTEM = windows
 
+SHOWINFO = -DNETWORK_DETAIL=0
+
 COMPILE_OPTION = 
 
 RM = rm -f
@@ -28,10 +30,10 @@ static : $(OBJECT)
 	ar crv $(TARGET) $^
 
 %.o : %.cpp
-	g++ -c $(COMPILE_OPTION) $< $(INC) $(SYSTEM_LIB_LINK) -o $@
+	g++ -c $(COMPILE_OPTION) $< $(SHOWINFO) $(INC) $(SYSTEM_LIB_LINK) -o $@
 
 shared :
-	g++ -shared -fPIC $(COMPILE_OPTION) $(SOURCE) $(INC) $(MAKELIB_LINK) $(SYSTEM_LIB_LINK) -o $(TARGET)
+	g++ -shared -fPIC $(COMPILE_OPTION) $(SOURCE) $(SHOWINFO) $(INC) $(MAKELIB_LINK) $(SYSTEM_LIB_LINK) -o $(TARGET)
 
 .PHONY clean:
 clean :
