@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-03 18:58.
+ * Last edit: 2021-01-06 17:01.
  */
 
 #ifdef _WIN32
@@ -22,7 +22,13 @@
 #include "byte_array.h"
 
 #define TCP_SOCKET_DISCONNECTED	0
-#define TCP_SOCKET_CONNECTED	1
+#define TCP_SOCKET_CONNECTED		1
+
+#define TCP_SOCKET_READYTOCONNECT	0	//aka succeed.
+#define TCP_SOCKET_GETADDRINFO_ERROR	(-1)	//aka maybe server's ip or port your input is error.
+#define TCP_SOCKET_SOCKETFD_ERROR	(-2)
+#define TCP_SOCKET_SETSOCKOPT_ERROR	(-3)
+#define TCP_SOCKET_ISSERVER_ERROR	(-4)	//aka this is serve's socket, peer is client, can't connect to other server.
 
 class TcpServer;
 #include "tcp_server.h"
@@ -33,11 +39,14 @@ public:
 	typedef void (*Disconnected)(TcpSocket *s);
 	typedef void (*Connected)(TcpSocket *s);
 	typedef void (*Read)(TcpSocket *s, ByteArray data);
+	typedef void (*ConnectError)(TcpSocket *s, int errorStatus);
 	
 	TcpSocket();
 	virtual ~TcpSocket();
 	
-	void connectToHost(const char *addr, unsigned short port, int family=AF_INET);
+	//will return error type, if return TCP_SOCKET_READYTOCONNECT {aka 0} is succeed.
+	int connectToHost(const char *addr, unsigned short port, int family=AF_INET);
+
 	void abort();
 	
 	void write(const ByteArray &data) const;
@@ -46,8 +55,12 @@ public:
 	void setDisconnectedCallBack(Disconnected disconnected);
 	void setConnectedCallBack(Connected connected);
 	void setReadCallBack(Read read);
+	void setConnectErrorCallBack(ConnectError connectError);
 	
 	int connectStatus() const;
+
+	String getPeerIp() const;
+	unsigned short getPeerPort() const;
 	
 	class Thread
 	{
@@ -77,6 +90,7 @@ private:
 	Disconnected m_onDisconnected;
 	Connected m_onConnected;
 	Read m_onRead;
+	ConnectError m_onConnectError;
 	
 	TcpServer *m_server;
 	

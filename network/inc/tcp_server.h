@@ -1,6 +1,16 @@
 #ifndef TCP_SERVER_H
 #define TCP_SERVER_H
 
+/*
+ * For start a tcp server easily.
+ * All message is ByteArray, so need Eyre Turing lib framework.
+ * Compile need -lpthread.
+ * MinGW compile need -lws2_32.
+ *
+ * Author: Eyre Turing.
+ * Last edit: 2021-01-06 14:42.
+ */
+
 #ifdef _WIN32
 #include <winsock.h>
 #include <queue>
@@ -14,6 +24,12 @@
 #define TCP_SERVER_CLOSED	0
 #define TCP_SERVER_RUNNING	1
 
+#define TCP_SERVER_READYTORUN			0	//aka succeed.
+#define TCP_SERVER_BIND_ERROR			(-1)	//aka the port you want maybe occupied.
+#define TCP_SERVER_SOCKETFD_ERROR		(-2)
+#define TCP_SERVER_LISTEN_ERROR		(-3)
+#define TCP_SERVER_CREATETHREAD_ERROR	(-4)
+
 class TcpSocket;
 #include "tcp_socket.h"
 
@@ -21,14 +37,21 @@ class TcpServer
 {
 public:
 	typedef void (*NewConnecting)(TcpServer *server, TcpSocket *client);
+	typedef void (*StartSucceed)(TcpServer *server);
+	typedef void (*Closed)(TcpServer *server);
 	
 	TcpServer();
 	virtual ~TcpServer();
 	
-	void start(unsigned short port, int family=AF_INET, unsigned long addr=INADDR_ANY, int backlog=5);
+	//return error type, if return TCP_SERVER_READYTORUN {aka 0} is succeed.
+	int start(unsigned short port, int family=AF_INET, unsigned long addr=INADDR_ANY, int backlog=5);
 	void abort();
 	
 	void setNewConnectingCallBack(NewConnecting newConnecting);
+	void setStartSucceedCallBack(StartSucceed startSucceed);
+	void setClosedCallBack(Closed closed);
+
+	int runStatus() const;
 	
 	class Thread
 	{
@@ -62,11 +85,15 @@ private:
 	pthread_t m_listenThread;
 	
 	NewConnecting m_onNewConnecting;
+	StartSucceed m_onStartSucceed;
+	Closed m_onClosed;
+
 #ifdef _WIN32
 	std::map<SOCKET, TcpSocket *> m_clientMap;
 #else
 	std::map<int, TcpSocket *> m_clientMap;
 #endif
+	pthread_mutex_t m_clientMapMutex;
 	
 	/*
 	 * Will create a TcpSocket* which use clientSockfd to send an recv message,
@@ -78,6 +105,7 @@ private:
 #else
 	TcpSocket *appendClient(int clientSockfd);
 #endif
+	pthread_mutex_t m_readfdsMutexInAppend;
 	
 	/*
 	 * Will close clientSockfd, remove clientSockfd from m_readfds
@@ -89,6 +117,7 @@ private:
 #else
 	bool removeClient(int clientSockfd);
 #endif
+	pthread_mutex_t m_readfdsMutexInRemove;
 };
 
 #endif	//TCP_SERVER_H
