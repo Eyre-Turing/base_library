@@ -3,10 +3,11 @@
  * The call back function `Read` will exec in a subthread.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-03 19:50.
+ * Last edit: 2021-01-06 14:12.
  */
 
 #include "tcp_socket.h"
+#include "debug_settings.h"
 
 #ifdef _WIN32
 #include <ws2tcpip.h>
@@ -28,7 +29,12 @@ void *TcpSocket::Thread::connectThread(void *s)
 	
 	if(connect(tcpSocket->m_sockfd, tcpSocket->m_res->ai_addr, tcpSocket->m_res->ai_addrlen) < 0)
 	{
-		perror("connectThread error");
+		int errorStatus = errno;
+		fprintf(stderr, "connectThread error: %s\n", strerror(errorStatus));
+		if(tcpSocket->m_onConnectError)
+		{
+			tcpSocket->m_onConnectError(tcpSocket, errorStatus);
+		}
 	}
 	else
 	{
@@ -61,12 +67,33 @@ void *TcpSocket::Thread::readThread(void *s)
 				tcpSocket->m_onRead(tcpSocket, ByteArray(buffer, size));
 			}
 		}
-		else
+		else if(size == 0)
 		{
 			tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
 			if(tcpSocket->m_onDisconnected)
 			{
 				tcpSocket->m_onDisconnected(tcpSocket);
+			}
+		}
+		else
+		{
+			int recvErrno = errno;
+#if NETWORK_DETAIL
+			fprintf(stdout, "tcpSocket(%p) recv size: %d, errno: %d.\n", tcpSocket, size, recvErrno);
+#endif 
+			if(recvErrno == 0 || recvErrno == EINTR || recvErrno == EWOULDBLOCK || recvErrno == EAGAIN)
+			{
+#if NETWORK_DETAIL
+				fprintf(stdout, "tcpSocket(%p) recv timeout.\n", tcpSocket);
+#endif
+			}
+			else
+			{
+				tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
+				if(tcpSocket->m_onDisconnected)
+				{
+					tcpSocket->m_onDisconnected(tcpSocket);
+				}
 			}
 		}
 	}
@@ -81,6 +108,7 @@ TcpSocket::TcpSocket()
 	m_onDisconnected = NULL;
 	m_onConnected = NULL;
 	m_onRead = NULL;
+	m_onConnectError = NULL;
 	
 	m_connectStatus = TCP_SOCKET_DISCONNECTED;
 	
@@ -91,6 +119,10 @@ TcpSocket::TcpSocket()
 	}
 	recvBuffer = NULL;
 #endif
+
+#if NETWORK_DETAIL
+	fprintf(stdout, "TcpSocket(%p) created as a client.\n", this);
+#endif
 }
 
 TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd(sockfd)
@@ -100,6 +132,7 @@ TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd
 	m_onDisconnected = NULL;
 	m_onConnected = NULL;
 	m_onRead = NULL;
+	m_onConnectError = NULL;
 	
 	m_connectStatus = TCP_SOCKET_CONNECTED;
 	
@@ -107,6 +140,10 @@ TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd
 	int optLen = sizeof(recvBufferSize);
 	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (char *) &recvBufferSize, &optLen);
 	recvBuffer = (char *) malloc(recvBufferSize+1);
+#endif
+
+#if NETWORK_DETAIL
+	fprintf(stdout, "TcpSocket(%p) created as a server(%p)\'s socket.\n", this, server);
 #endif
 }
 
@@ -123,13 +160,18 @@ TcpSocket::~TcpSocket()
 		WSACleanup();
 	}
 #endif
+
+#if NETWORK_DETAIL
+	fprintf(stdout, "TcpSocket(%p) destroyed.\n", this);
+#endif
 }
 
-void TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
+int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 {
 	if(m_server)
 	{
-		return ;
+		fprintf(stderr, "warning: this(%p) is a server socket, can not connect to other server!\n", this);
+		return TCP_SOCKET_ISSERVER_ERROR;
 	}
 	abort();
 	struct addrinfo hints = {0};
@@ -140,15 +182,33 @@ void TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 	{
 		fprintf(stderr, "TcpSocket(%p)::connectToHost getaddrinfo() error: %s\n",
 				this, gai_strerror(getErr));
+		return TCP_SOCKET_GETADDRINFO_ERROR;
 	}
 	m_sockfd = socket(m_res->ai_family, m_res->ai_socktype, m_res->ai_protocol);
 	if(m_sockfd < 0)
 	{
 		fprintf(stderr, "TcpSocket(%p)::connectToHost socket() error: %s\n",
 				this, strerror(errno));
+		return TCP_SOCKET_SOCKETFD_ERROR;
+	}
+	
+#ifdef _WIN32
+	int timeout = NETWORK_TIMEOUT*1000;
+#else
+	struct timeval timeout;
+	timeout.tv_sec = NETWORK_TIMEOUT;
+	timeout.tv_usec = 0;
+#endif
+	
+	if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0)
+	{
+		fprintf(stderr, "TcpSocket(%p) set no block error!\n", this);
+		return TCP_SOCKET_SETSOCKOPT_ERROR;
 	}
 	
 	pthread_create(&m_connectThread, NULL, TcpSocket::Thread::connectThread, this);
+	
+	return TCP_SOCKET_READYTOCONNECT;
 }
 
 void TcpSocket::abort()
@@ -181,6 +241,9 @@ void TcpSocket::abort()
 			m_onDisconnected(this);
 		}
 	}
+#if NETWORK_DETAIL
+	fprintf(stdout, "TcpSocket(%p) abort.\n", this);
+#endif
 }
 
 void TcpSocket::setDisconnectedCallBack(Disconnected disconnected)
@@ -196,6 +259,11 @@ void TcpSocket::setConnectedCallBack(Connected connected)
 void TcpSocket::setReadCallBack(Read read)
 {
 	m_onRead = read;
+}
+
+void TcpSocket::setConnectErrorCallBack(ConnectError connectError)
+{
+	m_onConnectError = connectError;
 }
 
 void TcpSocket::write(const ByteArray &data) const
@@ -215,4 +283,40 @@ void TcpSocket::write(const char *data, unsigned int size) const
 int TcpSocket::connectStatus() const
 {
 	return m_connectStatus;
+}
+
+String TcpSocket::getPeerIp() const
+{
+	struct sockaddr_in addr;
+#ifdef _WIN32
+	int len = sizeof(addr);
+#else
+	unsigned int len = sizeof(addr);
+#endif
+	if(getpeername(m_sockfd, (struct sockaddr *) &addr, &len) == 0)
+	{
+		return String(inet_ntoa(addr.sin_addr), CODEC_UTF8);
+	}
+	else
+	{
+		return "";
+	}
+}
+
+unsigned short TcpSocket::getPeerPort() const
+{
+	struct sockaddr_in addr;
+#ifdef _WIN32
+	int len = sizeof(addr);
+#else
+	unsigned int len = sizeof(addr);
+#endif
+	if(getpeername(m_sockfd, (struct sockaddr *) &addr, &len) == 0)
+	{
+		return ntohs(addr.sin_port);
+	}
+	else
+	{
+		return 0;
+	}
 }

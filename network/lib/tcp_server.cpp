@@ -1,3 +1,11 @@
+/*
+ * Class TcpServer can start a tcp server.
+ * The call back function `NewConnecting` will catch tcp client connect event.
+ *
+ * Author: Eyre Turing.
+ * Last edit: 2021-01-06 14:28.
+ */
+
 #include "tcp_server.h"
 #include "debug_settings.h"
 
@@ -30,6 +38,13 @@ void *TcpServer::Thread::selectThread(void *s)
 	
 	char readBuffer[READBUFFER_SIZE+1];
 	
+	tcpServer->m_runStatus = TCP_SERVER_RUNNING;
+
+	if(tcpServer->m_onStartSucceed)
+	{
+		tcpServer->m_onStartSucceed(tcpServer);
+	}
+	
 	while(tcpServer->m_runStatus == TCP_SERVER_RUNNING)
 	{
 #ifdef _WIN32
@@ -51,15 +66,29 @@ void *TcpServer::Thread::selectThread(void *s)
 #endif
 
 #ifdef _WIN32
-		result = select(0, &testfds, NULL, NULL, NULL);
+		TIMEVAL timeout;
+		timeout.tv_sec = NETWORK_TIMEOUT;
+		timeout.tv_usec = 0;
+		result = select(0, &testfds, NULL, NULL, &timeout);
 #else
-		result = select(FD_SETSIZE, &testfds, (fd_set *) 0, (fd_set *) 0, (struct timeval *) 0);
+		struct timeval timeout;
+		timeout.tv_sec = NETWORK_TIMEOUT;
+		timeout.tv_usec = 0;
+		result = select(FD_SETSIZE, &testfds, (fd_set *) 0, (fd_set *) 0, &timeout);
 #endif
-		if(result < 1)
+		if(result < 0)
 		{
 			perror("select");
 			tcpServer->m_runStatus = TCP_SERVER_CLOSED;
 			break;
+		}
+		
+		if(result == 0)
+		{
+#if NETWORK_DETAIL
+			fprintf(stdout, "select timeout.\n");
+#endif
+			continue;
 		}
 		
 #if NETWORK_DETAIL
@@ -168,12 +197,19 @@ void *TcpServer::Thread::selectThread(void *s)
 		pthread_mutex_unlock(&(tcpServer->m_readfdsMutex));
 	}
 	
+	if(tcpServer->m_onClosed)
+	{
+		tcpServer->m_onClosed(tcpServer);
+	}
+	
 	return NULL;
 }
 
 TcpServer::TcpServer()
 {
 	m_onNewConnecting = NULL;
+	m_onStartSucceed = NULL;
+	m_onClosed = NULL;
 	m_runStatus = TCP_SERVER_CLOSED;
 	
 	FD_ZERO(&m_readfds);
@@ -186,6 +222,9 @@ TcpServer::TcpServer()
 	pthread_mutex_init(&m_waitForRemoveSockfdsMutex, NULL);
 #endif
 	pthread_mutex_init(&m_readfdsMutex, NULL);
+	pthread_mutex_init(&m_clientMapMutex, NULL);
+	pthread_mutex_init(&m_readfdsMutexInAppend, NULL);
+	pthread_mutex_init(&m_readfdsMutexInRemove, NULL);
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) created.\n", this);
@@ -200,18 +239,22 @@ TcpServer::~TcpServer()
 	pthread_mutex_destroy(&m_waitForRemoveSockfdsMutex);
 #endif
 	pthread_mutex_destroy(&m_readfdsMutex);
+	pthread_mutex_destroy(&m_clientMapMutex);
+	pthread_mutex_destroy(&m_readfdsMutexInAppend);
+	pthread_mutex_destroy(&m_readfdsMutexInRemove);
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) destroyed.\n", this);
 #endif
 }
 
-void TcpServer::start(unsigned short port, int family, unsigned long addr, int backlog)
+int TcpServer::start(unsigned short port, int family, unsigned long addr, int backlog)
 {
 	abort();
 	if((m_sockfd=socket(family, SOCK_STREAM, 0)) < 0)
 	{
 		fprintf(stderr, "TcpServer(%p) socket() fail!\n", this);
+		return TCP_SERVER_SOCKETFD_ERROR;
 	}
 	
 #if NETWORK_DETAIL
@@ -225,13 +268,21 @@ void TcpServer::start(unsigned short port, int family, unsigned long addr, int b
 	serverAddr.sin_addr.s_addr = htonl(addr);
 	serverAddr.sin_port = htons(port);
 	
-	bind(m_sockfd, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
+	if(bind(m_sockfd, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) != 0)
+	{
+		fprintf(stderr, "TcpServer(%p) bind() fail!\n", this);
+		return TCP_SERVER_BIND_ERROR;
+	}
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) bind.\n", this);
 #endif
 	
-	listen(m_sockfd, backlog);
+	if(listen(m_sockfd, backlog) != 0)
+	{
+		fprintf(stderr, "TcpServer(%p) listen() fail!\n", this);
+		return TCP_SERVER_LISTEN_ERROR;
+	}
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) set listen.\n", this);
@@ -244,13 +295,16 @@ void TcpServer::start(unsigned short port, int family, unsigned long addr, int b
 	fprintf(stdout, "TcpServer(%p) set m_readfds.\n", this);
 #endif
 	
-	m_runStatus = TCP_SERVER_RUNNING;
-
-	pthread_create(&m_listenThread, NULL, TcpServer::Thread::selectThread, this);
+	if(pthread_create(&m_listenThread, NULL, TcpServer::Thread::selectThread, this) != 0)
+	{
+		fprintf(stderr, "TcpServer(%p) can not create thread!\n", this);
+		return TCP_SERVER_CREATETHREAD_ERROR;
+	}
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) started.\n", this);
 #endif
+	return TCP_SERVER_READYTORUN;
 }
 
 void TcpServer::abort()
@@ -261,6 +315,7 @@ void TcpServer::abort()
 	}
 	m_runStatus = TCP_SERVER_CLOSED;
 	pthread_mutex_lock(&m_readfdsMutex);
+	pthread_mutex_lock(&m_clientMapMutex);
 #ifdef _WIN32
 	for(std::map<SOCKET, TcpSocket *>::iterator it=m_clientMap.begin();
 #else
@@ -274,6 +329,7 @@ void TcpServer::abort()
 		close(it->first);
 #endif
 	}
+	pthread_mutex_unlock(&m_clientMapMutex);
 	FD_ZERO(&m_readfds);
 #ifdef _WIN32
 	closesocket(m_sockfd);
@@ -293,7 +349,10 @@ TcpSocket *TcpServer::appendClient(SOCKET clientSockfd)
 TcpSocket *TcpServer::appendClient(int clientSockfd)
 #endif
 {
+	pthread_mutex_lock(&m_readfdsMutexInAppend);
 	FD_SET(clientSockfd, &m_readfds);
+	pthread_mutex_unlock(&m_readfdsMutexInAppend);
+	pthread_mutex_lock(&m_clientMapMutex);
 #ifdef _WIN32
 	std::map<SOCKET, TcpSocket *>::iterator it = m_clientMap.find(clientSockfd);
 #else
@@ -301,10 +360,12 @@ TcpSocket *TcpServer::appendClient(int clientSockfd)
 #endif
 	if(it != m_clientMap.end())
 	{
+		pthread_mutex_unlock(&m_clientMapMutex);
 		return it->second;
 	}
 	TcpSocket *tcpSocket = new TcpSocket(this, clientSockfd);
 	m_clientMap[clientSockfd] = tcpSocket;
+	pthread_mutex_unlock(&m_clientMapMutex);
 	return tcpSocket;
 }
 
@@ -314,6 +375,7 @@ bool TcpServer::removeClient(SOCKET clientSockfd)
 bool TcpServer::removeClient(int clientSockfd)
 #endif
 {
+	pthread_mutex_lock(&m_clientMapMutex);
 #ifdef _WIN32
 	std::map<SOCKET, TcpSocket *>::iterator it = m_clientMap.find(clientSockfd);
 #else
@@ -321,6 +383,7 @@ bool TcpServer::removeClient(int clientSockfd)
 #endif
 	if(it == m_clientMap.end())
 	{
+		pthread_mutex_unlock(&m_clientMapMutex);
 		return false;
 	}
 	TcpSocket *tcpSocket = it->second;
@@ -332,7 +395,9 @@ bool TcpServer::removeClient(int clientSockfd)
 	pthread_mutex_unlock(&m_waitForRemoveSockfdsMutex);
 #else
 	close(clientSockfd);
+	pthread_mutex_lock(&m_readfdsMutexInRemove);
 	FD_CLR(clientSockfd, &m_readfds);
+	pthread_mutex_unlock(&m_readfdsMutexInRemove);
 #endif
 	tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
 	if(tcpSocket->m_onDisconnected)
@@ -340,6 +405,7 @@ bool TcpServer::removeClient(int clientSockfd)
 		tcpSocket->m_onDisconnected(tcpSocket);
 	}
 	m_clientMap.erase(it);
+	pthread_mutex_unlock(&m_clientMapMutex);
 	return true;
 }
 
@@ -349,4 +415,19 @@ void TcpServer::setNewConnectingCallBack(NewConnecting newConnecting)
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) set new connecting call back.\n", this);
 #endif 
+}
+
+void TcpServer::setStartSucceedCallBack(StartSucceed startSucceed)
+{
+	m_onStartSucceed = startSucceed;
+}
+
+void TcpServer::setClosedCallBack(Closed closed)
+{
+	m_onClosed = closed;
+}
+
+int TcpServer::runStatus() const
+{
+	return m_runStatus;
 }
