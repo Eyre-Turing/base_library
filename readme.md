@@ -1,4 +1,5 @@
 在g++编译通过。
+
 在windows静态编译：
 ```
 mingw32-make SYSTEM=windows RELEASE_MODE=static
