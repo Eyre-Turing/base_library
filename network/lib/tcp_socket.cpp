@@ -3,7 +3,7 @@
  * The call back function `Read` will exec in a subthread.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-06 14:12.
+ * Last edit: 2021-01-10 15:08.
  */
 
 #include "tcp_socket.h"
@@ -40,10 +40,16 @@ void *TcpSocket::Thread::connectThread(void *s)
 	{
 		tcpSocket->m_connectStatus = TCP_SOCKET_CONNECTED;
 		
-		pthread_create(&(tcpSocket->m_readThread), NULL,
-						TcpSocket::Thread::readThread, s);
-		
-		if(tcpSocket->m_onConnected)
+		if(pthread_create(&(tcpSocket->m_readThread), NULL,
+						TcpSocket::Thread::readThread, s) != 0)
+		{
+			tcpSocket->abort();
+			if(tcpSocket->m_onConnectError)
+			{
+				tcpSocket->m_onConnectError(tcpSocket, TCP_SOCKET_CREATETHREAD_ERROR);
+			}
+		}
+		else if(tcpSocket->m_onConnected)
 		{
 			tcpSocket->m_onConnected(tcpSocket);
 		}
@@ -69,11 +75,12 @@ void *TcpSocket::Thread::readThread(void *s)
 		}
 		else if(size == 0)
 		{
-			tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
-			if(tcpSocket->m_onDisconnected)
-			{
-				tcpSocket->m_onDisconnected(tcpSocket);
-			}
+			//tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
+			//if(tcpSocket->m_onDisconnected)
+			//{
+			//	tcpSocket->m_onDisconnected(tcpSocket);
+			//}
+			tcpSocket->abort();
 		}
 		else
 		{
@@ -149,7 +156,10 @@ TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd
 
 TcpSocket::~TcpSocket()
 {
-	abort();
+	if(!m_server)
+	{
+		abort();
+	}
 #ifdef _WIN32
 	if(m_server)
 	{
@@ -180,6 +190,11 @@ int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 	int getErr = getaddrinfo(addr, String::fromNumber(port), &hints, &m_res);
 	if(getErr)
 	{
+		if(m_res)
+		{
+			freeaddrinfo(m_res);
+			m_res = NULL;
+		}
 		fprintf(stderr, "TcpSocket(%p)::connectToHost getaddrinfo() error: %s\n",
 				this, gai_strerror(getErr));
 		return TCP_SOCKET_GETADDRINFO_ERROR;
@@ -187,6 +202,11 @@ int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 	m_sockfd = socket(m_res->ai_family, m_res->ai_socktype, m_res->ai_protocol);
 	if(m_sockfd < 0)
 	{
+		if(m_res)
+		{
+			freeaddrinfo(m_res);
+			m_res = NULL;
+		}
 		fprintf(stderr, "TcpSocket(%p)::connectToHost socket() error: %s\n",
 				this, strerror(errno));
 		return TCP_SOCKET_SOCKETFD_ERROR;
@@ -202,11 +222,35 @@ int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 	
 	if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0)
 	{
+		if(m_res)
+		{
+			freeaddrinfo(m_res);
+			m_res = NULL;
+		}
+#ifdef _WIN32
+		closesocket(m_sockfd);
+#else
+		close(m_sockfd);
+#endif
 		fprintf(stderr, "TcpSocket(%p) set no block error!\n", this);
 		return TCP_SOCKET_SETSOCKOPT_ERROR;
 	}
 	
-	pthread_create(&m_connectThread, NULL, TcpSocket::Thread::connectThread, this);
+	if(pthread_create(&m_connectThread, NULL, TcpSocket::Thread::connectThread, this) != 0)
+	{
+		if(m_res)
+		{
+			freeaddrinfo(m_res);
+			m_res = NULL;
+		}
+#ifdef _WIN32
+		closesocket(m_sockfd);
+#else
+		close(m_sockfd);
+#endif
+		fprintf(stderr, "TcpSocket(%p) can not create thread for connect to host!\n", this);
+		return TCP_SOCKET_CREATETHREAD_ERROR;
+	}
 	
 	return TCP_SOCKET_READYTOCONNECT;
 }
@@ -221,6 +265,7 @@ void TcpSocket::abort()
 	if(m_res)
 	{
 		freeaddrinfo(m_res);
+		m_res = NULL;
 	}
 	
 	if(m_server)
@@ -240,10 +285,11 @@ void TcpSocket::abort()
 		{
 			m_onDisconnected(this);
 		}
-	}
+		
 #if NETWORK_DETAIL
-	fprintf(stdout, "TcpSocket(%p) abort.\n", this);
+		fprintf(stdout, "TcpSocket(%p) abort.\n", this);
 #endif
+	}
 }
 
 void TcpSocket::setDisconnectedCallBack(Disconnected disconnected)
@@ -266,18 +312,18 @@ void TcpSocket::setConnectErrorCallBack(ConnectError connectError)
 	m_onConnectError = connectError;
 }
 
-void TcpSocket::write(const ByteArray &data) const
+bool TcpSocket::write(const ByteArray &data) const
 {
-	write(data, data.size());
+	return write(data, data.size());
 }
 
-void TcpSocket::write(const char *data, unsigned int size) const
+bool TcpSocket::write(const char *data, unsigned int size) const
 {
 	if(size == 0xffffffff)
 	{
 		size = strlen(data);
 	}
-	send(m_sockfd, data, size, 0);
+	return send(m_sockfd, data, size, 0)>0;
 }
 
 int TcpSocket::connectStatus() const
@@ -319,4 +365,9 @@ unsigned short TcpSocket::getPeerPort() const
 	{
 		return 0;
 	}
+}
+
+TcpServer *TcpSocket::server() const
+{
+	return m_server;
 }

@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-06 17:01.
+ * Last edit: 2021-01-10 15:09.
  */
 
 #ifdef _WIN32
@@ -28,7 +28,8 @@
 #define TCP_SOCKET_GETADDRINFO_ERROR	(-1)	//aka maybe server's ip or port your input is error.
 #define TCP_SOCKET_SOCKETFD_ERROR	(-2)
 #define TCP_SOCKET_SETSOCKOPT_ERROR	(-3)
-#define TCP_SOCKET_ISSERVER_ERROR	(-4)	//aka this is serve's socket, peer is client, can't connect to other server.
+#define TCP_SOCKET_CREATETHREAD_ERROR	(-4)
+#define TCP_SOCKET_ISSERVER_ERROR	(-5)	//aka this is serve's socket, peer is client, can't connect to other server.
 
 class TcpServer;
 #include "tcp_server.h"
@@ -47,10 +48,11 @@ public:
 	//will return error type, if return TCP_SOCKET_READYTOCONNECT {aka 0} is succeed.
 	int connectToHost(const char *addr, unsigned short port, int family=AF_INET);
 
+	//if this is a server's socket connect from a client, the function will `delete this`.
 	void abort();
 	
-	void write(const ByteArray &data) const;
-	void write(const char *data, unsigned int size=0xffffffff) const;
+	bool write(const ByteArray &data) const;
+	bool write(const char *data, unsigned int size=0xffffffff) const;
 	
 	void setDisconnectedCallBack(Disconnected disconnected);
 	void setConnectedCallBack(Connected connected);
@@ -61,6 +63,13 @@ public:
 
 	String getPeerIp() const;
 	unsigned short getPeerPort() const;
+	
+	/*
+	 * If this is a server's socket connect from a client,
+	 * the function can get the manage server.
+	 * Else return NULL.
+	 */
+	TcpServer *server() const;
 	
 	class Thread
 	{
@@ -85,7 +94,6 @@ private:
 	
 	pthread_t m_connectThread;
 	pthread_t m_readThread;
-	pthread_t m_writeThread;
 	
 	Disconnected m_onDisconnected;
 	Connected m_onConnected;

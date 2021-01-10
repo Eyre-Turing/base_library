@@ -22,8 +22,7 @@ endif
 # Like input -m32 for compilation a 32bit lib.
 COMPILE_OPTION = 
 
-# RM is your delete file tool command name.
-RM = rm -f
+TEST_USE_FOR = NOTHING
 
 ################################################################
 # Don't change any of the following.
@@ -60,7 +59,7 @@ else
 endif
 
 %.o : %.cpp
-	g++ -c $(COMPILE_OPTION) $< $(MAKELIB_INC) -o $@
+	g++ -c $(COMPILE_OPTION) $< $(MAKELIB_INC) -DUSE_FOR=$(TEST_USE_FOR) -o $@
 
 %$(STATIC_LIB_SUFFIX) :
 	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) SYSTEM=$(SYSTEM) static
@@ -70,9 +69,18 @@ endif
 
 .PHONY clean:
 clean :
-	$(RM) $(OBJECT)
-	$(foreach n, $(dir $(MAKELIB_OBJ)), $(RM) $(n)/*.o)
+ifeq ($(SYSTEM),windows)
+	del $(subst /,\, $(OBJECT))
+	del $(foreach n, $(subst /,\, $(dir $(MAKELIB_OBJ))), $(n)\*.o)
+else
+	rm -f $(OBJECT)
+	rm -f $(foreach n, $(dir $(MAKELIB_OBJ)), $(n)/*.o)
+endif
 
 .PHONY remove-lib:
 remove-lib :
-	$(RM) $(MAKELIB_OBJ)
+ifeq ($(SYSTEM),windows)
+	del $(subst /,\, $(MAKELIB_OBJ))
+else
+	rm -f $(MAKELIB_OBJ)
+endif

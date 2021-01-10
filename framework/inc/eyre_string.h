@@ -5,7 +5,7 @@
  * For using string easily in Windows and Linux.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-28 11:06.
+ * Last edit: 2021-01-09 14:22.
  */
 
 #include <iostream>
@@ -109,6 +109,8 @@ public:
 
 	friend std::ostream &operator<<(std::ostream &out, const String &s);
 	friend std::istream &operator>>(std::istream &in, String &s);
+	
+	friend std::istream &getline(std::istream &in, String &s, char delim='\n');
 
 	friend String operator+(const String &a, const String &b);
 
@@ -152,9 +154,40 @@ public:
 	static String fromNumber(unsigned long long num);
 	static String fromNumber(float num);
 	static String fromNumber(double num);
+	
+	/*
+	 * The function arg will replace %[number] to param 'to'.
+	 * For example:
+	 * ```String("hello %1 world").arg("new");```
+	 * wile return "hello new world".
+	 *
+	 * And you can:
+	 * ```String("info:\n  name: %1 ... app_user_name: %1 ...").arg("Eyre");```
+	 * will return "info:\n  name: Eyre ... app_user_name: Eyre ...".
+	 *
+	 * And you can:
+	 * ```String("name: %1 %2, first name: %1, last name: %2.").arg("Eyre").arg("Turing");```
+	 * will return "name: Eyre Turing, first name: Eyre, last name: Turing.".
+	 *
+	 * For the %[number], number is a int from 1 to 99.
+	 * Note: %1 can not write as %01, else %01 replace will fail.
+	 */
+	String &arg(const char *to, StringCodec codec=CODEC_AUTO);
+	String &arg(const String &to);
+	String &arg(int to);
+	String &arg(unsigned int to);
+	String &arg(long long to);
+	String &arg(unsigned long long to);
+	String &arg(float to);
+	String &arg(double to);
 
 private:
 	ByteArray *m_data;
+	
+	//if not found, return "".
+	String argFindMinTag() const;
+	String &replaceForArg(const String &tag, const char *to, StringCodec codec=CODEC_AUTO);
+	String &replaceForArg(const String &tag, const String &to);
 };
 
 std::ostream &operator<<(std::ostream &out, const std::vector<String> &sv);

@@ -5,7 +5,7 @@
  * copy and convert into system codec to print.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-05 15:24.
+ * Last edit: 2021-01-09 14:22.
  */
 
 #include "eyre_string.h"
@@ -15,7 +15,7 @@
 #include <string>
 #include <string.h>
 
-//codec mains what str codec is.
+//codec means what str codec is.
 String::String(const char *str, StringCodec codec)
 {
 #if EYRE_DETAIL
@@ -206,6 +206,20 @@ std::istream &operator>>(std::istream &in, String &s)
 #endif
 #endif
 	return in; 
+}
+
+std::istream &getline(std::istream &in, String &s, char delim)
+{
+	std::string input;
+	getline(in, input, delim);
+#if (CODEC_SYS_DEF == CODEC_GBK)
+	char *data = gbkToUtf8(input.c_str());
+	*(s.m_data) = data;
+	free(data);
+#else
+	*(s.m_data) = input.c_str();
+#endif
+	return in;
 }
 
 String &String::operator=(const String &s)
@@ -754,4 +768,106 @@ String String::fromNumber(double num)
 	char temp[128];
 	sprintf(temp, "%lf", num);
 	return String(temp, CODEC_UTF8);
+}
+
+bool chIsNumber(char ch)
+{
+	return (ch>='0' && ch<='9');
+}
+
+String String::argFindMinTag() const
+{
+	int minNumber = 100;
+	int index = -1;
+	int tempNumber;
+	while((index=indexOf("%", index+1, CODEC_UTF8)) != -1)
+	{
+		if(chIsNumber(at(index+1)))
+		{
+			tempNumber = (int)(at(index+1)-'0');
+			if(tempNumber == 0)
+			{
+				continue;
+			}
+			if(chIsNumber(at(index+2)))
+			{
+				tempNumber *= 10;
+				tempNumber += (int)(at(index+2)-'0');
+			}
+			if(tempNumber>0 && tempNumber<minNumber)
+			{
+				minNumber = tempNumber;
+			}
+		}
+	}
+	if(minNumber<100 && minNumber>0)
+	{
+		return String("%", CODEC_UTF8)+String::fromNumber(minNumber);
+	}
+	return "";
+}
+
+String &String::replaceForArg(const String &tag, const char *to, StringCodec codec)
+{
+	unsigned int tagsize = tag.size();
+	unsigned int tosize = strlen(to);
+	int index = 0;
+	while((index=indexOf(tag, index)) != -1)
+	{
+		if(tagsize==3 || !chIsNumber(at(index+2)))
+		{
+			replace(index, tagsize, to, codec);
+			index += tosize;
+		}
+		else
+		{
+			index += tagsize;
+		}
+	}
+	return *this;
+}
+
+String &String::replaceForArg(const String &tag, const String &to)
+{
+	return replaceForArg(tag, to, CODEC_UTF8);
+}
+
+String &String::arg(const char *to, StringCodec codec)
+{
+	return replaceForArg(argFindMinTag(), to, codec);
+}
+
+String &String::arg(const String &to)
+{
+	return replaceForArg(argFindMinTag(), to);
+}
+
+String &String::arg(int to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+String &String::arg(unsigned int to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+String &String::arg(long long to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+String &String::arg(unsigned long long to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+String &String::arg(float to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+String &String::arg(double to)
+{
+	return replaceForArg(argFindMinTag(), String::fromNumber(to));
 }

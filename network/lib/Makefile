@@ -6,8 +6,6 @@ SHOWINFO = -DNETWORK_DETAIL=0
 
 COMPILE_OPTION = 
 
-RM = rm -f
-
 ###############################################################
 # Don't change any of the following.
 
@@ -37,4 +35,8 @@ shared :
 
 .PHONY clean:
 clean :
-	$(RM) $(OBJECT)
+ifeq ($(SYSTEM),windows)
+	del $(OBJECT)
+else
+	rm -f $(OBJECT)
+endif

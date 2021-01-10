@@ -3,7 +3,7 @@
  * The call back function `NewConnecting` will catch tcp client connect event.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-06 14:28.
+ * Last edit: 2021-01-08 17:39.
  */
 
 #include "tcp_server.h"
@@ -270,6 +270,11 @@ int TcpServer::start(unsigned short port, int family, unsigned long addr, int ba
 	
 	if(bind(m_sockfd, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) != 0)
 	{
+#ifdef _WIN32
+		closesocket(m_sockfd);
+#else
+		close(m_sockfd);
+#endif
 		fprintf(stderr, "TcpServer(%p) bind() fail!\n", this);
 		return TCP_SERVER_BIND_ERROR;
 	}
@@ -280,6 +285,11 @@ int TcpServer::start(unsigned short port, int family, unsigned long addr, int ba
 	
 	if(listen(m_sockfd, backlog) != 0)
 	{
+#ifdef _WIN32
+		closesocket(m_sockfd);
+#else
+		close(m_sockfd);
+#endif
 		fprintf(stderr, "TcpServer(%p) listen() fail!\n", this);
 		return TCP_SERVER_LISTEN_ERROR;
 	}
@@ -297,6 +307,11 @@ int TcpServer::start(unsigned short port, int family, unsigned long addr, int ba
 	
 	if(pthread_create(&m_listenThread, NULL, TcpServer::Thread::selectThread, this) != 0)
 	{
+#ifdef _WIN32
+		closesocket(m_sockfd);
+#else
+		close(m_sockfd);
+#endif
 		fprintf(stderr, "TcpServer(%p) can not create thread!\n", this);
 		return TCP_SERVER_CREATETHREAD_ERROR;
 	}
@@ -328,7 +343,9 @@ void TcpServer::abort()
 #else
 		close(it->first);
 #endif
+		delete it->second;
 	}
+	m_clientMap.erase(m_clientMap.begin(), m_clientMap.end());
 	pthread_mutex_unlock(&m_clientMapMutex);
 	FD_ZERO(&m_readfds);
 #ifdef _WIN32
@@ -406,6 +423,7 @@ bool TcpServer::removeClient(int clientSockfd)
 	}
 	m_clientMap.erase(it);
 	pthread_mutex_unlock(&m_clientMapMutex);
+	delete tcpSocket;
 	return true;
 }
 
