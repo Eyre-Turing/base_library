@@ -3,7 +3,7 @@
  * The call back function `NewConnecting` will catch tcp client connect event.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-08 17:39.
+ * Last edit: 2021-01-12 17:33.
  */
 
 #include "tcp_server.h"
@@ -79,7 +79,6 @@ void *TcpServer::Thread::selectThread(void *s)
 		if(result < 0)
 		{
 			perror("select");
-			tcpServer->m_runStatus = TCP_SERVER_CLOSED;
 			break;
 		}
 		
@@ -176,20 +175,20 @@ void *TcpServer::Thread::selectThread(void *s)
 					}
 					else
 					{
-						nread = recv(curSockfd, readBuffer, READBUFFER_SIZE, 0);
+						//nread = recv(curSockfd, readBuffer, READBUFFER_SIZE, 0);
 						
-						if(nread <= 0)
-						{
+						//if(nread <= 0)
+						//{
 #ifdef _WIN32
-							closesocket(curSockfd);
+						closesocket(curSockfd);
 #else
-							close(curSockfd);
+						close(curSockfd);
 #endif
-							FD_CLR(curSockfd, &readfds);
+						FD_CLR(curSockfd, &readfds);
 #ifdef _WIN32
-							--fd;
+						--fd;
 #endif
-						}
+						//}
 					}
 				}
 			}
@@ -197,10 +196,7 @@ void *TcpServer::Thread::selectThread(void *s)
 		pthread_mutex_unlock(&(tcpServer->m_readfdsMutex));
 	}
 	
-	if(tcpServer->m_onClosed)
-	{
-		tcpServer->m_onClosed(tcpServer);
-	}
+	tcpServer->abort();
 	
 	return NULL;
 }
@@ -354,6 +350,11 @@ void TcpServer::abort()
 	close(m_sockfd);
 #endif
 	pthread_mutex_unlock(&m_readfdsMutex);
+	
+	if(m_onClosed)
+	{
+		m_onClosed(this);
+	}
 	
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpServer(%p) abort.\n", this);

@@ -1,6 +1,6 @@
 /*
  * Author: Eyre Turing.
- * Last edit: 2021-01-10 14:52.
+ * Last edit: 2021-01-11 16:55.
  */
 
 #include "udp_socket.h"
@@ -13,6 +13,7 @@
 #include <netdb.h>
 #endif	//_WIN32
 
+#include <stdio.h>
 #include <string.h>
 
 #include "eyre_string.h"
@@ -177,10 +178,6 @@ bool UdpSocket::send(const char *addr, unsigned short port,
 	hints.ai_socktype = SOCK_DGRAM;
 	if(getaddrinfo(addr, String::fromNumber(port), &hints, &res) != 0)
 	{
-		if(res)
-		{
-			freeaddrinfo(res);
-		}
 		fprintf(stderr, "UdpSocket(%p) send getaddrinfo error!\n", this);
 		return false;
 	}

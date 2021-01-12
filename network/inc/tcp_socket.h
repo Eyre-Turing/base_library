@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-10 15:09.
+ * Last edit: 2021-01-11 17:34.
  */
 
 #ifdef _WIN32
@@ -27,7 +27,7 @@
 #define TCP_SOCKET_READYTOCONNECT	0	//aka succeed.
 #define TCP_SOCKET_GETADDRINFO_ERROR	(-1)	//aka maybe server's ip or port your input is error.
 #define TCP_SOCKET_SOCKETFD_ERROR	(-2)
-#define TCP_SOCKET_SETSOCKOPT_ERROR	(-3)
+//#define TCP_SOCKET_SETSOCKOPT_ERROR	(-3)
 #define TCP_SOCKET_CREATETHREAD_ERROR	(-4)
 #define TCP_SOCKET_ISSERVER_ERROR	(-5)	//aka this is serve's socket, peer is client, can't connect to other server.
 

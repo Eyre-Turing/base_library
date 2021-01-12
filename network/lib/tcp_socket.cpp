@@ -3,7 +3,7 @@
  * The call back function `Read` will exec in a subthread.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-10 15:08.
+ * Last edit: 2021-01-11 16:55.
  */
 
 #include "tcp_socket.h"
@@ -12,6 +12,8 @@
 #ifdef _WIN32
 #include <ws2tcpip.h>
 #else
+#include <netinet/in.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <netdb.h>
 #endif	//_WIN32
@@ -61,48 +63,88 @@ void *TcpSocket::Thread::connectThread(void *s)
 void *TcpSocket::Thread::readThread(void *s)
 {
 	TcpSocket *tcpSocket = (TcpSocket *) s;
+	
+	fd_set readfds, testfds;
+	FD_ZERO(&readfds);
+	FD_SET(tcpSocket->m_sockfd, &readfds);
+	
 	char buffer[ONCE_READ];
-	int size;
+	int size, result;
 	while(tcpSocket->m_connectStatus == TCP_SOCKET_CONNECTED)
 	{
-		size = recv(tcpSocket->m_sockfd, buffer, ONCE_READ, 0);
+		testfds = readfds;
+		
+#if NETWORK_DETAIL
+		fprintf(stdout, "tcpSocket(%p) wait.\n", tcpSocket);
+#endif
+		
+#ifdef _WIN32
+		TIMEVAL timeout;
+		timeout.tv_sec = NETWORK_TIMEOUT;
+		timeout.tv_usec = 0;
+		result = select(0, &testfds, NULL, NULL, &timeout);
+#else
+		struct timeval timeout;
+		timeout.tv_sec = NETWORK_TIMEOUT;
+		timeout.tv_usec = 0;
+		result = select(FD_SETSIZE, &testfds, (fd_set *) 0, (fd_set *) 0, &timeout);
+#endif
+
+		if(result < 0)
+		{
+			perror("select");
+			tcpSocket->abort();
+			break;
+		}
+		
+		if(result == 0)
+		{
+#if NETWORK_DETAIL
+			fprintf(stdout, "tcpSocket(%p) select timeout.\n", tcpSocket);
+#endif
+			continue;
+		}
+		
+		if(!FD_ISSET(tcpSocket->m_sockfd, &testfds))
+		{
+			fprintf(stderr, "tcpSocket(%p) select unknow error!\n", tcpSocket);
+			continue;
+		}
+		
+#ifdef _WIN32
+		size = recv(tcpSocket->m_sockfd, tcpSocket->recvBuffer, tcpSocket->recvBufferSize, 0);
 		if(size > 0)
 		{
 			if(tcpSocket->m_onRead)
 			{
-				tcpSocket->m_onRead(tcpSocket, ByteArray(buffer, size));
+				tcpSocket->m_onRead(tcpSocket, ByteArray(tcpSocket->recvBuffer, size));
 			}
-		}
-		else if(size == 0)
-		{
-			//tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
-			//if(tcpSocket->m_onDisconnected)
-			//{
-			//	tcpSocket->m_onDisconnected(tcpSocket);
-			//}
-			tcpSocket->abort();
 		}
 		else
 		{
-			int recvErrno = errno;
-#if NETWORK_DETAIL
-			fprintf(stdout, "tcpSocket(%p) recv size: %d, errno: %d.\n", tcpSocket, size, recvErrno);
-#endif 
-			if(recvErrno == 0 || recvErrno == EINTR || recvErrno == EWOULDBLOCK || recvErrno == EAGAIN)
+			tcpSocket->abort();
+		}
+#else
+		ioctl(tcpSocket->m_sockfd, FIONREAD, &size);
+		if(size > 0)
+		{
+			ByteArray recvData;
+			while(size > 0)
 			{
-#if NETWORK_DETAIL
-				fprintf(stdout, "tcpSocket(%p) recv timeout.\n", tcpSocket);
-#endif
+				int recvSize = recv(tcpSocket->m_sockfd, buffer, ONCE_READ, 0);
+				recvData.append(buffer, recvSize);
+				size -= recvSize;
 			}
-			else
+			if(tcpSocket->m_onRead)
 			{
-				tcpSocket->m_connectStatus = TCP_SOCKET_DISCONNECTED;
-				if(tcpSocket->m_onDisconnected)
-				{
-					tcpSocket->m_onDisconnected(tcpSocket);
-				}
+				tcpSocket->m_onRead(tcpSocket, recvData);
 			}
 		}
+		else
+		{
+			tcpSocket->abort();
+		} 
+#endif
 	}
 	return NULL;
 }
@@ -161,11 +203,8 @@ TcpSocket::~TcpSocket()
 		abort();
 	}
 #ifdef _WIN32
-	if(m_server)
-	{
-		free(recvBuffer);
-	}
-	else
+	free(recvBuffer);
+	if(!m_server)
 	{
 		WSACleanup();
 	}
@@ -190,11 +229,7 @@ int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 	int getErr = getaddrinfo(addr, String::fromNumber(port), &hints, &m_res);
 	if(getErr)
 	{
-		if(m_res)
-		{
-			freeaddrinfo(m_res);
-			m_res = NULL;
-		}
+		m_res = NULL;
 		fprintf(stderr, "TcpSocket(%p)::connectToHost getaddrinfo() error: %s\n",
 				this, gai_strerror(getErr));
 		return TCP_SOCKET_GETADDRINFO_ERROR;
@@ -211,30 +246,39 @@ int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
 				this, strerror(errno));
 		return TCP_SOCKET_SOCKETFD_ERROR;
 	}
-	
+
 #ifdef _WIN32
-	int timeout = NETWORK_TIMEOUT*1000;
-#else
-	struct timeval timeout;
-	timeout.tv_sec = NETWORK_TIMEOUT;
-	timeout.tv_usec = 0;
-#endif
-	
-	if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0)
+	if(recvBuffer == NULL)
 	{
-		if(m_res)
-		{
-			freeaddrinfo(m_res);
-			m_res = NULL;
-		}
-#ifdef _WIN32
-		closesocket(m_sockfd);
-#else
-		close(m_sockfd);
-#endif
-		fprintf(stderr, "TcpSocket(%p) set no block error!\n", this);
-		return TCP_SOCKET_SETSOCKOPT_ERROR;
+		int optLen = sizeof(recvBufferSize);
+		getsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, (char *) &recvBufferSize, &optLen);
+		recvBuffer = (char *) malloc(recvBufferSize+1);
 	}
+#endif
+	
+//#ifdef _WIN32
+//	int timeout = NETWORK_TIMEOUT*1000;
+//#else
+//	struct timeval timeout;
+//	timeout.tv_sec = NETWORK_TIMEOUT;
+//	timeout.tv_usec = 0;
+//#endif
+	
+//	if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0)
+//	{
+//		if(m_res)
+//		{
+//			freeaddrinfo(m_res);
+//			m_res = NULL;
+//		}
+//#ifdef _WIN32
+//		closesocket(m_sockfd);
+//#else
+//		close(m_sockfd);
+//#endif
+//		fprintf(stderr, "TcpSocket(%p) set no block error!\n", this);
+//		return TCP_SOCKET_SETSOCKOPT_ERROR;
+//	}
 	
 	if(pthread_create(&m_connectThread, NULL, TcpSocket::Thread::connectThread, this) != 0)
 	{

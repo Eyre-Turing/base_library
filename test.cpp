@@ -18,6 +18,7 @@ using namespace std;
 #include <algorithm>
 
 vector<TcpSocket *> clients;
+bool running;
 
 void onRead(TcpSocket *client, ByteArray data)
 {
@@ -48,16 +49,23 @@ void onNewConnecting(TcpServer *server, TcpSocket *client)
 	cout<<"new client connected: "<<client<<", id: "<<clients.size()-1<<", ip: "<<client->getPeerIp()<<", port: "<<client->getPeerPort()<<endl;
 }
 
+void onClosed(TcpServer *server)
+{
+	running = false;
+	cout<<"closed."<<endl;
+}
+
 int main()
 {
 	TcpServer tcpServer;
 	tcpServer.setNewConnectingCallBack(onNewConnecting);
+	tcpServer.setClosedCallBack(onClosed);
 	cout<<"input your server port: ";
 	unsigned short port;
 	cin>>port;
-	tcpServer.start(port);
+	running = (tcpServer.start(port)==TCP_SERVER_READYTORUN);
 	String cmd;
-	while(tcpServer.runStatus() == TCP_SERVER_RUNNING)
+	while(running)
 	{
 		cin>>cmd;
 		if(cmd == "help")
@@ -77,6 +85,7 @@ int main()
 		{
 			unsigned int id;
 			cin>>id;
+			getchar();
 			String data;
 			getline(cin, data);
 			data.replace("\\n", "\n");
@@ -99,6 +108,8 @@ int main()
 	return 0;
 }
 #elif (USE_FOR == TCP_CLIENT)
+bool enable;
+
 void onRead(TcpSocket *tcpSocket, ByteArray data)
 {
 	cout<<"read message:"<<endl<<data.toString(CODEC_UTF8)<<endl;
@@ -106,12 +117,19 @@ void onRead(TcpSocket *tcpSocket, ByteArray data)
 
 void onDisconnected(TcpSocket *client)
 {
+	enable = false;
 	cout<<"disconnected."<<endl;
 }
 
 void onConnected(TcpSocket *client)
 {
 	cout<<"connected."<<endl;
+}
+
+void onConnectError(TcpSocket *client, int errorStatus)
+{
+	enable = false;
+	cout<<"connect error."<<endl;
 }
 
 int main()
@@ -126,9 +144,10 @@ int main()
 	cout<<"input server port: ";
 	unsigned short port;
 	cin>>port;
-	tcpSocket.connectToHost(host, port);
+	getchar();
+	enable = (tcpSocket.connectToHost(host, port)==TCP_SOCKET_READYTOCONNECT);
 	String data;
-	while(tcpSocket.connectStatus() == TCP_SOCKET_CONNECTED)
+	while(enable)
 	{
 		getline(cin, data);
 		data.replace("\\n", "\n");
@@ -167,6 +186,7 @@ int main()
 			break;
 		}
 		cin>>port;
+		getchar();
 		getline(cin, data);
 		data.replace("\\n", "\n");
 		udpSocket.send(ip, port, ByteArray::fromString(data, CODEC_UTF8));
