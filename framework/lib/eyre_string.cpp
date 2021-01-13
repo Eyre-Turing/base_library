@@ -5,7 +5,7 @@
  * copy and convert into system codec to print.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-09 14:22.
+ * Last edit: 2021-01-13 12:17.
  */
 
 #include "eyre_string.h"
@@ -206,6 +206,11 @@ std::istream &operator>>(std::istream &in, String &s)
 #endif
 #endif
 	return in; 
+}
+
+std::istream &getline(std::istream &in, String &s)
+{
+	return getline(in, s, '\n');
 }
 
 std::istream &getline(std::istream &in, String &s, char delim)

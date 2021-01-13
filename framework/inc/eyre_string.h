@@ -5,7 +5,7 @@
  * For using string easily in Windows and Linux.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-09 14:22.
+ * Last edit: 2021-01-13 12:15.
  */
 
 #include <iostream>
@@ -110,7 +110,8 @@ public:
 	friend std::ostream &operator<<(std::ostream &out, const String &s);
 	friend std::istream &operator>>(std::istream &in, String &s);
 	
-	friend std::istream &getline(std::istream &in, String &s, char delim='\n');
+	friend std::istream &getline(std::istream &in, String &s);
+	friend std::istream &getline(std::istream &in, String &s, char delim);
 
 	friend String operator+(const String &a, const String &b);
 
