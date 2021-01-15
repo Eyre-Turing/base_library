@@ -2,6 +2,7 @@
 
 # 功能简介
 framework里是一些开发应用中通用的类，有：字节数组（ByteArray），字符串（String），文件（File），配置文件读写（IniSettings），配置文本读写（IniParse）。字符串支持编码转换，目前只实现GBK和UTF8两种编码之间互相转换。字符串内部采用UTF8编码储存数据，不使用系统编码储存数据，实现windows和linux通信不会出现中文乱码。
+
 network里是一些通用的网络编程类，有：TCP服务器（TcpServer），TCP客户端（TcpSocket），UDP（UdpSocket）。其中TCP服务器采用select多路复用，用户连接、断开、发送信息均以回调函数的形式反馈。TCP客户端和UDP接收信息也为回调函数反馈。均采用多线程，不会对主线程造成阻塞。
 
 # 在windows静态编译
