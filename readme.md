@@ -1,4 +1,4 @@
-在g++编译通过，在windows centos ubuntu测试可用。
+在g++编译通过，在windows centos ubuntu raspberrypi(raspbian)测试可用。
 
 在windows静态编译：
 ```bash
