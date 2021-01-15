@@ -5,7 +5,7 @@
  * copy and convert into system codec to print.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-13 12:17.
+ * Last edit: 2021-01-15 12:13.
  */
 
 #include "eyre_string.h"
@@ -15,19 +15,16 @@
 #include <string>
 #include <string.h>
 
+StringCodec String::codecAutoDef = CODEC_AUTO_DEF;
+StringCodec String::codecSysDef = CODEC_SYS_DEF;
+
 //codec means what str codec is.
 String::String(const char *str, StringCodec codec)
 {
-#if EYRE_DETAIL
-#if (CODEC_SYS_DEF == CODEC_GBK)
-	fprintf(stdout, "system codec gbk\n");
-#else
-	fprintf(stdout, "system codec utf-8\n");
-#endif
-#endif
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -55,7 +52,8 @@ String::String(const ByteArray &b, StringCodec codec)
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -70,6 +68,7 @@ String::String(const ByteArray &b, StringCodec codec)
 	}
 	else
 	{
+		m_data = new ByteArray();
 #if EYRE_DEBUG
 		fprintf(stderr, "String(%p) unknow codec: \'%d\'!\n", this, codec);
 #endif
@@ -109,7 +108,8 @@ int String::indexOf(const char *str, unsigned int offset, StringCodec codec) con
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -142,7 +142,8 @@ int String::lastIndexOf(const char *str, unsigned int offset, StringCodec codec)
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -178,13 +179,19 @@ String::operator const char*() const
 
 std::ostream &operator<<(std::ostream &out, const String &s)
 {
-#if (CODEC_SYS_DEF == CODEC_GBK)
-	char *data = utf8ToGbk(s.m_data->m_data);
-	out<<data;
-	free(data);
-#else
-	out<<s.m_data->m_data;
-#endif
+//#if (CODEC_SYS_DEF == CODEC_GBK)
+	if(String::codecSysDef == CODEC_GBK)
+	{
+		char *data = utf8ToGbk(s.m_data->m_data);
+		out<<data;
+		free(data);
+	}
+//#else
+	else
+	{
+		out<<s.m_data->m_data;
+	}
+//#endif
 	return out;
 }
 
@@ -192,19 +199,25 @@ std::istream &operator>>(std::istream &in, String &s)
 {
 	std::string input;
 	in>>input;
-#if (CODEC_SYS_DEF == CODEC_GBK)
-	char *data = gbkToUtf8(input.c_str());
-	*(s.m_data) = data;
+//#if (CODEC_SYS_DEF == CODEC_GBK)
+	if(String::codecSysDef == CODEC_GBK)
+	{
+		char *data = gbkToUtf8(input.c_str());
+		*(s.m_data) = data;
 #if EYRE_DETAIL
-	fprintf(stdout, "in>> codec gbk\ninput: %s\nsize: %d\n", data, strlen(data));
+		fprintf(stdout, "in>> codec gbk\ninput: %s\nsize: %d\n", data, strlen(data));
 #endif
-	free(data);
-#else
-	*(s.m_data) = input.c_str();
+		free(data);
+	}
+//#else
+	else
+	{
+		*(s.m_data) = input.c_str();
 #if EYRE_DETAIL
-	fprintf(stdout, "in>> codec utf-8\ninput: %s\nsize: %d\n", input.c_str(), input.size());
+		fprintf(stdout, "in>> codec utf-8\ninput: %s\nsize: %d\n", input.c_str(), input.size());
 #endif
-#endif
+	}
+//#endif
 	return in; 
 }
 
@@ -217,13 +230,19 @@ std::istream &getline(std::istream &in, String &s, char delim)
 {
 	std::string input;
 	getline(in, input, delim);
-#if (CODEC_SYS_DEF == CODEC_GBK)
-	char *data = gbkToUtf8(input.c_str());
-	*(s.m_data) = data;
-	free(data);
-#else
-	*(s.m_data) = input.c_str();
-#endif
+//#if (CODEC_SYS_DEF == CODEC_GBK)
+	if(String::codecSysDef == CODEC_GBK)
+	{
+		char *data = gbkToUtf8(input.c_str());
+		*(s.m_data) = data;
+		free(data);
+	}
+//#else
+	else
+	{
+		*(s.m_data) = input.c_str();
+	}
+//#endif
 	return in;
 }
 
@@ -235,13 +254,19 @@ String &String::operator=(const String &s)
 
 String &String::operator=(const char *str)
 {
-#if (CODEC_AUTO_DEF == CODEC_GBK)
-	char *strc = gbkToUtf8(str);
-	*m_data = strc;
-	free(strc);
-#else
-	*m_data = str;
-#endif
+//#if (CODEC_AUTO_DEF == CODEC_GBK)
+	if(codecAutoDef == CODEC_GBK)
+	{
+		char *strc = gbkToUtf8(str);
+		*m_data = strc;
+		free(strc);
+	}
+//#else
+	else
+	{
+		*m_data = str;
+	}
+//#endif
 	return *this;
 }
 
@@ -257,18 +282,25 @@ String String::fromUtf8(const char *str)
 
 String String::fromLocal(const char *str)
 {
-#if (CODEC_SYS_DEF == CODEC_GBK)
-	return fromGbk(str);
-#else
-	return fromUtf8(str);
-#endif
+//#if (CODEC_SYS_DEF == CODEC_GBK)
+	if(codecSysDef == CODEC_GBK)
+	{
+		return fromGbk(str);
+	}
+//#else
+	else
+	{
+		return fromUtf8(str);
+	}
+//#endif
 }
 
 bool String::append(const char *str, StringCodec codec)
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec == codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -348,14 +380,25 @@ String &String::operator+=(char c)
 
 bool String::operator==(const char *str) const
 {
-#if (CODEC_AUTO_DEF == CODEC_GBK)
-	char *strc = gbkToUtf8(str);
-	bool status = ((*m_data)==strc);
-	free(strc);
-	return status;
-#else
-	return (*m_data)==str;
-#endif
+//#if (CODEC_AUTO_DEF == CODEC_GBK)
+	if(codecAutoDef == CODEC_GBK)
+	{
+		char *strc = gbkToUtf8(str);
+		bool status = ((*m_data)==strc);
+		free(strc);
+		return status;
+	}
+//#else
+	else
+	{
+		return (*m_data)==str;
+	}
+//#endif
+}
+
+bool String::operator==(char *str) const
+{
+	return (*this)==(const char *) str;
 }
 
 bool String::operator==(const String &s) const
@@ -364,6 +407,11 @@ bool String::operator==(const String &s) const
 }
 
 bool String::operator!=(const char *str) const
+{
+	return !((*this)==str);
+}
+
+bool String::operator!=(char *str) const
 {
 	return !((*this)==str);
 }
@@ -397,11 +445,13 @@ String &String::replace(const char *tag, const char *to, StringCodec tagCodec, S
 {
 	if(tagCodec == CODEC_AUTO)
 	{
-		tagCodec = CODEC_AUTO_DEF;
+		//tagCodec = CODEC_AUTO_DEF;
+		tagCodec = codecAutoDef;
 	}
 	if(toCodec == CODEC_AUTO)
 	{
-		toCodec = CODEC_AUTO_DEF;
+		//toCodec = CODEC_AUTO_DEF;
+		toCodec = codecAutoDef;
 	}
 	
 	const char *tagcc;
@@ -489,7 +539,8 @@ std::vector<String> String::split(const char *tag, StringCodec codec) const
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	std::vector<String> result;
 	if(codec == CODEC_GBK)
@@ -531,7 +582,8 @@ String &String::replace(unsigned int offset, unsigned int range, const char *to,
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
@@ -875,4 +927,24 @@ String &String::arg(float to)
 String &String::arg(double to)
 {
 	return replaceForArg(argFindMinTag(), String::fromNumber(to));
+}
+
+void String::setAutoCodec(StringCodec codec)
+{
+	codecAutoDef = codec;
+}
+
+void String::setLocalCodec(StringCodec codec)
+{
+	codecSysDef = codec;
+}
+
+StringCodec String::getAutoCodec()
+{
+	return codecAutoDef;
+}
+
+StringCodec String::getLocalCodec()
+{
+	return codecSysDef;
 }

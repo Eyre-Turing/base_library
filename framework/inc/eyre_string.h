@@ -5,7 +5,7 @@
  * For using string easily in Windows and Linux.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-13 12:15.
+ * Last edit: 2021-01-15 12:13.
  */
 
 #include <iostream>
@@ -40,7 +40,7 @@ public:
 	String &operator=(const String &s);
 	
 	/* 
-	 * Will using CODEC_AUTO, if str is a string constant in code,
+	 * Will using CODEC_AUTO, if str is a string constant(aka const char*) in code, default
 	 * for Windows code save as GBK will normal, for Linux code save as UTF-8.
 	 * If str is a variable from a extern file or socket, it's easy to miscode,
 	 * because this function don't know what str codec is.
@@ -52,7 +52,7 @@ public:
 	static String fromGbk(const char *str);
 	static String fromUtf8(const char *str);
 
-	//for Windows same as fromGbk(const char*), for Linux same as fromUtf8(const char*).
+	//default for Windows same as fromGbk(const char*), for Linux same as fromUtf8(const char*).
 	static String fromLocal(const char *str);
 
 	bool append(const char *str, StringCodec codec=CODEC_AUTO);
@@ -73,16 +73,18 @@ public:
 
 	/*
 	 * Same reason as operator=(const char*),
-	 * if str's codec isn't local codec(GBK for Windows, UTF8 for Linux),
+	 * if str's codec isn't auto codec(default: GBK for Windows, UTF8 for Linux),
 	 * and str isn't plain English,
 	 * will return false.
 	 */
 	bool operator==(const char *str) const;
+	bool operator==(char *str) const;
 
 	bool operator==(const String &s) const;
 
 	//same reason as operator==(const char*), it's easy return true.
 	bool operator!=(const char *str) const;
+	bool operator!=(char *str) const;
 
 	bool operator!=(const String &s) const;
 
@@ -181,9 +183,18 @@ public:
 	String &arg(unsigned long long to);
 	String &arg(float to);
 	String &arg(double to);
-
+	
+	static void setAutoCodec(StringCodec codec);	//redefine CODEC_AUTO.
+	static void setLocalCodec(StringCodec codec);	//redefine system codec.
+	
+	static StringCodec getAutoCodec();
+	static StringCodec getLocalCodec();
+	
 private:
 	ByteArray *m_data;
+	
+	static StringCodec codecAutoDef;
+	static StringCodec codecSysDef;
 	
 	//if not found, return "".
 	String argFindMinTag() const;

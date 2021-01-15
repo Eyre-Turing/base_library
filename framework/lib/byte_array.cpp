@@ -2,7 +2,7 @@
  * Class ByteArray can save any data as byte array.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-29 14:55.
+ * Last edit: 2021-01-15 12:00.
  */
 
 #include "byte_array.h"
@@ -316,12 +316,22 @@ bool ByteArray::operator==(const char *str) const
 	return true;
 }
 
+bool ByteArray::operator==(char *str) const
+{
+	return (*this)==(const char *) str;
+}
+
 bool ByteArray::operator!=(const ByteArray &b) const
 {
 	return !((*this) == b);
 }
 
 bool ByteArray::operator!=(const char *str) const
+{
+	return !((*this) == str);
+}
+
+bool ByteArray::operator!=(char *str) const
 {
 	return !((*this) == str);
 }

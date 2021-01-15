@@ -2,14 +2,14 @@
  * Some general algorithm.
  * 
  * Author: Eyre Turing.
- * Last edit: 2021-01-05 15:36.
+ * Last edit: 2021-01-15 11:46.
  */
 
 #include "general.h"
 #include <string.h>
 #include <stdlib.h>
 
-char *byteReplace(	const char *src, const char *tag, const char *to,
+char *EyreFrameworkGeneral::byteReplace(	const char *src, const char *tag, const char *to,
 			unsigned int srcsize, unsigned int tagsize, unsigned int tosize,
 			unsigned int &resultSize, unsigned int &resultServe)
 {
@@ -117,40 +117,14 @@ char *byteReplace(	const char *src, const char *tag, const char *to,
 			memcpy(result+(index_+(tosize-tagsize)*ci), src+index_, srcsize-index_);
 		}
 		
-#if EYRE_DETAIL
-		fprintf(stdout, "result: (");
-		unsigned currentSize;
-		if(index != -1)
-		{
-			currentSize = index+(tosize-tagsize)*ci+tosize;
-		}
-		else
-		{
-			currentSize = srcsize+(tosize-tagsize)*ci;
-		}
-		for(unsigned int i=0; i<currentSize; ++i)
-		{
-			if(i)
-			{
-				fprintf(stdout, ", ");
-			}
-			fprintf(stdout, "%d", (int) result[i]);
-		}
-		fprintf(stdout, "), size: %d\n", currentSize);
-#endif
-		
 		++ci;
 	} while(index != -1);
 	result[resultSize] = 0;
 	
-#if EYRE_DETAIL
-	fprintf(stdout, "replaced.\n");
-#endif
-	
 	return result;
 }
 
-char *byteChange(	const char *src, const char *to, unsigned int srcsize, unsigned int tosize,
+char *EyreFrameworkGeneral::byteChange(	const char *src, const char *to, unsigned int srcsize, unsigned int tosize,
 					unsigned int srcOffset, unsigned int srcRange,
 					unsigned int &resultSize, unsigned int &resultServe)
 {
@@ -174,7 +148,7 @@ char *byteChange(	const char *src, const char *to, unsigned int srcsize, unsigne
 	return result;
 }
 
-std::vector<int> kmpGetNext(const char *tag, unsigned int tagsize)
+std::vector<int> EyreFrameworkGeneral::kmpGetNext(const char *tag, unsigned int tagsize)
 {
 	std::vector<int> next;
 	next.resize(tagsize+1);
@@ -195,13 +169,13 @@ std::vector<int> kmpGetNext(const char *tag, unsigned int tagsize)
 	return next;
 }
 
-int kmpSearch(const char *src, const char *tag, unsigned int srcsize, unsigned int tagsize, unsigned int offset)
+int EyreFrameworkGeneral::kmpSearch(const char *src, const char *tag, unsigned int srcsize, unsigned int tagsize, unsigned int offset)
 {
 	std::vector<int> next = kmpGetNext(tag, tagsize);
 	return kmpSearch(src, tag, srcsize, tagsize, next, offset);
 }
 
-int kmpSearch(	const char *src, const char *tag, unsigned int srcsize, unsigned int tagsize,
+int EyreFrameworkGeneral::kmpSearch(	const char *src, const char *tag, unsigned int srcsize, unsigned int tagsize,
 			const std::vector<int> &next, unsigned int offset)
 {
 	int k = -1;
@@ -226,41 +200,53 @@ int kmpSearch(	const char *src, const char *tag, unsigned int srcsize, unsigned 
 #ifdef _WIN32
 #include <windows.h>
 
-std::string GbkToUtf8(const char *src_str)
+char *EyreFrameworkGeneral::GbkToUtf8(const char *src_str)
 {
-	int len = MultiByteToWideChar(CP_ACP, 0, src_str, -1, NULL, 0);
-	wchar_t* wstr = new wchar_t[len + 1];
+	//int len = MultiByteToWideChar(CP_ACP, 0, src_str, -1, NULL, 0);
+	int len = MultiByteToWideChar(936, 0, src_str, -1, NULL, 0);
+	//wchar_t* wstr = new wchar_t[len + 1];
+	wchar_t *wstr = (wchar_t *) malloc(sizeof(wchar_t)*(len+1));
 	memset(wstr, 0, len + 1);
-	MultiByteToWideChar(CP_ACP, 0, src_str, -1, wstr, len);
+	//MultiByteToWideChar(CP_ACP, 0, src_str, -1, wstr, len);
+	MultiByteToWideChar(936, 0, src_str, -1, wstr, len);
 	len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
-	char* str = new char[len + 1];
+	//char* str = new char[len + 1];
+	char *str = (char *) malloc(len+1);
 	memset(str, 0, len + 1);
 	WideCharToMultiByte(CP_UTF8, 0, wstr, -1, str, len, NULL, NULL);
-	std::string strTemp = str;
-	if (wstr) delete[] wstr;
-	if (str) delete[] str;
-	return strTemp;
+	//std::string strTemp = str;
+	//delete[] wstr;
+	//delete[] str;
+	//return strTemp;
+	free(wstr);
+	return str;
 }
 
-std::string Utf8ToGbk(const char *src_str)
+char *EyreFrameworkGeneral::Utf8ToGbk(const char *src_str)
 {
 	int len = MultiByteToWideChar(CP_UTF8, 0, src_str, -1, NULL, 0);
-	wchar_t* wszGBK = new wchar_t[len + 1];
+	//wchar_t* wszGBK = new wchar_t[len + 1];
+	wchar_t *wszGBK = (wchar_t *) malloc(sizeof(wchar_t)*(len+1));
 	memset(wszGBK, 0, len * 2 + 2);
 	MultiByteToWideChar(CP_UTF8, 0, src_str, -1, wszGBK, len);
-	len = WideCharToMultiByte(CP_ACP, 0, wszGBK, -1, NULL, 0, NULL, NULL);
-	char* szGBK = new char[len + 1];
+	//len = WideCharToMultiByte(CP_ACP, 0, wszGBK, -1, NULL, 0, NULL, NULL);
+	len = WideCharToMultiByte(936, 0, wszGBK, -1, NULL, 0, NULL, NULL);
+	//char* szGBK = new char[len + 1];
+	char *szGBK = (char *) malloc(len+1);
 	memset(szGBK, 0, len + 1);
-	WideCharToMultiByte(CP_ACP, 0, wszGBK, -1, szGBK, len, NULL, NULL);
-	std::string strTemp(szGBK);
-	if (wszGBK) delete[] wszGBK;
-	if (szGBK) delete[] szGBK;
-	return strTemp;
+	//WideCharToMultiByte(CP_ACP, 0, wszGBK, -1, szGBK, len, NULL, NULL);
+	WideCharToMultiByte(936, 0, wszGBK, -1, szGBK, len, NULL, NULL);
+	//std::string strTemp(szGBK);
+	//delete[] wszGBK;
+	//delete[] szGBK;
+	//return strTemp;
+	free(wszGBK);
+	return szGBK;
 }
 #else
 #include <iconv.h>
 
-int GbkToUtf8(char *str_str, size_t src_len, char *dst_str, size_t dst_len)
+int EyreFrameworkGeneral::GbkToUtf8(char *str_str, size_t src_len, char *dst_str, size_t dst_len)
 {
 	iconv_t cd;
 	char **pin = &str_str;
@@ -278,7 +264,7 @@ int GbkToUtf8(char *str_str, size_t src_len, char *dst_str, size_t dst_len)
 	return 0;
 }
 
-int Utf8ToGbk(char *src_str, size_t src_len, char *dst_str, size_t dst_len)
+int EyreFrameworkGeneral::Utf8ToGbk(char *src_str, size_t src_len, char *dst_str, size_t dst_len)
 {
 	iconv_t cd;
 	char **pin = &src_str;
@@ -297,19 +283,20 @@ int Utf8ToGbk(char *src_str, size_t src_len, char *dst_str, size_t dst_len)
 }
 #endif
 
-char *gbkToUtf8(const char *gbk_str)
+char *EyreFrameworkGeneral::gbkToUtf8(const char *gbk_str)
 {
 #ifdef _WIN32
-	std::string utf8_str = GbkToUtf8(gbk_str);
-	const char *utf8_str_c = utf8_str.c_str();
-	unsigned int len = strlen(utf8_str_c);
-	char *result = (char *) malloc(len+1);
-	memcpy(result, utf8_str_c, len);
-	result[len] = 0;
-	return result;
+//	std::string utf8_str = GbkToUtf8(gbk_str);
+//	const char *utf8_str_c = utf8_str.c_str();
+//	unsigned int len = strlen(utf8_str_c);
+//	char *result = (char *) malloc(len+1);
+//	memcpy(result, utf8_str_c, len);
+//	result[len] = 0;
+//	return result;
+	return GbkToUtf8(gbk_str);
 #else
 	unsigned int gbk_strLen = strlen(gbk_str);
-	unsigned int boundLen = gbk_strLen*3/2+1;
+	unsigned int boundLen = gbk_strLen*3;	//in gbk one word most use 2 byte, in utf8 one word most use 6 byte, so 3 times.
 	char *boundResult = (char *) malloc(boundLen+1);
 	memset(boundResult, 0, boundLen+1);
 	char *gbk_strc = (char *) malloc(gbk_strLen+1);
@@ -323,16 +310,17 @@ char *gbkToUtf8(const char *gbk_str)
 #endif
 }
 
-char *utf8ToGbk(const char *utf8_str)
+char *EyreFrameworkGeneral::utf8ToGbk(const char *utf8_str)
 {
 #ifdef _WIN32
-	std::string gbk_str = Utf8ToGbk(utf8_str);
-	const char *gbk_str_c = gbk_str.c_str();
-	unsigned int len = strlen(gbk_str_c);
-	char *result = (char *) malloc(len+1);
-	memcpy(result, gbk_str_c, len);
-	result[len] = 0;
-	return result;
+//	std::string gbk_str = Utf8ToGbk(utf8_str);
+//	const char *gbk_str_c = gbk_str.c_str();
+//	unsigned int len = strlen(gbk_str_c);
+//	char *result = (char *) malloc(len+1);
+//	memcpy(result, gbk_str_c, len);
+//	result[len] = 0;
+//	return result;
+	return Utf8ToGbk(utf8_str);
 #else
 	unsigned int utf8_strLen = strlen(utf8_str);
 	unsigned int boundLen = utf8_strLen;

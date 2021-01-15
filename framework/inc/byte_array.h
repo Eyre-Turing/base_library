@@ -5,7 +5,7 @@
  * For save byte array data. Thread unsafe.
  *
  * Author: Eyre Turing.
- * Last edit: 2020-12-25 20:25.
+ * Last edit: 2021-01-15 12:00.
  */
 
 #include <iostream>
@@ -41,9 +41,11 @@ public:
 
 	bool operator==(const ByteArray &b) const;
 	bool operator==(const char *str) const;
+	bool operator==(char *str) const; 
 
 	bool operator!=(const ByteArray &b) const;
 	bool operator!=(const char *str) const;
+	bool operator!=(char *str) const;
 
 	bool reserve(unsigned int s);
 	unsigned int serve() const;
