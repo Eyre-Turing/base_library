@@ -2,7 +2,7 @@
  * Class ByteArray can save any data as byte array.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-15 12:00.
+ * Last edit: 2021-01-21 12:19.
  */
 
 #include "byte_array.h"
@@ -518,7 +518,8 @@ ByteArray ByteArray::fromString(const String &s, StringCodec codec)
 {
 	if(codec == CODEC_AUTO)
 	{
-		codec = CODEC_AUTO_DEF;
+		//codec = CODEC_AUTO_DEF;
+		codec = String::codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{

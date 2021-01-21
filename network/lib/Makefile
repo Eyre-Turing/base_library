@@ -28,7 +28,7 @@ static : $(OBJECT)
 	ar crv $(TARGET) $^
 
 %.o : %.cpp
-	g++ -c $(COMPILE_OPTION) $< $(SHOWINFO) $(INC) $(SYSTEM_LIB_LINK) -o $@
+	g++ -c $(COMPILE_OPTION) $< $(SHOWINFO) $(INC) -o $@
 
 shared :
 	g++ -shared -fPIC $(COMPILE_OPTION) $(SOURCE) $(SHOWINFO) $(INC) $(MAKELIB_LINK) $(SYSTEM_LIB_LINK) -o $(TARGET)

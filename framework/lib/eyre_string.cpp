@@ -5,7 +5,7 @@
  * copy and convert into system codec to print.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-15 12:13.
+ * Last edit: 2021-01-21 12:12.
  */
 
 #include "eyre_string.h"
@@ -827,7 +827,7 @@ String String::fromNumber(double num)
 	return String(temp, CODEC_UTF8);
 }
 
-bool chIsNumber(char ch)
+bool String::chIsNumber(char ch)
 {
 	return (ch>='0' && ch<='9');
 }

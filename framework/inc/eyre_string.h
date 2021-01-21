@@ -5,7 +5,7 @@
  * For using string easily in Windows and Linux.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-15 12:13.
+ * Last edit: 2021-01-21 12:11.
  */
 
 #include <iostream>
@@ -200,6 +200,8 @@ private:
 	String argFindMinTag() const;
 	String &replaceForArg(const String &tag, const char *to, StringCodec codec=CODEC_AUTO);
 	String &replaceForArg(const String &tag, const String &to);
+	
+	static bool chIsNumber(char ch);
 };
 
 std::ostream &operator<<(std::ostream &out, const std::vector<String> &sv);
