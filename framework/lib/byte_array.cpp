@@ -631,6 +631,32 @@ std::vector<ByteArray> ByteArray::split(const ByteArray &tag) const
 	return split(tag.m_data, tag.m_size);
 }
 
+bool ByteArray::operator<(const ByteArray &b) const
+{
+	unsigned int len = m_size;
+	if(len > b.m_size)
+	{
+		len = b.m_size;
+	}
+	len += NEED_ADD;
+	return memcmp(m_data, b.m_data, len)<0;
+}
+
+bool ByteArray::operator>(const ByteArray &b) const
+{
+	return b<(*this);
+}
+
+bool ByteArray::operator<=(const ByteArray &b) const
+{
+	return !((*this)>b);
+}
+
+bool ByteArray::operator>=(const ByteArray &b) const
+{
+	return !((*this)<b);
+}
+
 ByteArray::Iterator::Iterator(ByteArray *b, unsigned int offset) : m_b(b), m_offset(offset)
 {
 #if EYRE_DETAIL

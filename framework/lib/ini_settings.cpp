@@ -63,12 +63,16 @@ int IniParse::parentPosRange(	const String &parent, unsigned int &parentOffset,
 								unsigned int &parentIndex, unsigned int &parentEnd) const
 {
 	String parentExtern = "["+parent+"]";
-	parentOffset = (unsigned int) m_text.indexOf(parentExtern);
-	if(parentOffset == (unsigned int) -1)
+	parentOffset = -1;
+	do
 	{
-		parentOffset = parentIndex = parentEnd = m_text.size();
-		return INI_NO_PARENT;
-	}
+		parentOffset = (unsigned int) m_text.indexOf(parentExtern, parentOffset+1);
+		if(parentOffset == (unsigned int) -1)
+		{
+			parentOffset = parentIndex = parentEnd = m_text.size();
+			return INI_NO_PARENT;
+		}
+	} while((parentOffset>0 && m_text.at(parentOffset-1)!='\n') || m_text.at(parentOffset+parentExtern.size())!='\n');
 	parentIndex = parentOffset+parentExtern.size();
 	parentEnd = (unsigned int) m_text.indexOf("\n[", parentIndex);
 	if(parentEnd == (unsigned int) -1)

@@ -91,6 +91,11 @@ public:
 	friend class String;
 	friend std::ostream &operator<<(std::ostream &out, const String &s);
 	
+	bool operator<(const ByteArray &b) const;
+	bool operator>(const ByteArray &b) const;
+	bool operator<=(const ByteArray &b) const;
+	bool operator>=(const ByteArray &b) const;
+	
 	class Iterator
 	{
 	public:

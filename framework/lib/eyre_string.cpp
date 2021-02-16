@@ -624,6 +624,26 @@ char String::at(unsigned int pos) const
 	return m_data->at(pos);
 }
 
+bool String::operator<(const String &s) const
+{
+	return (*m_data)<(*(s.m_data));
+}
+
+bool String::operator>(const String &s) const
+{
+	return (*m_data)>(*(s.m_data));
+}
+
+bool String::operator<=(const String &s) const
+{
+	return (*m_data)<=(*(s.m_data));
+}
+
+bool String::operator>=(const String &s) const
+{
+	return (*m_data)>=(*(s.m_data));
+}
+
 String::Iterator::Iterator(String *s, unsigned int offset) : m_s(s), m_offset(offset)
 {
 #if EYRE_DETAIL

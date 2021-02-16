@@ -119,6 +119,11 @@ public:
 
 	friend class ByteArray;
 	
+	bool operator<(const String &s) const;
+	bool operator>(const String &s) const;
+	bool operator<=(const String &s) const;
+	bool operator>=(const String &s) const;
+	
 	class Iterator
 	{
 	public:
