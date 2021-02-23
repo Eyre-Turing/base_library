@@ -300,7 +300,7 @@ bool String::append(const char *str, StringCodec codec)
 	if(codec == CODEC_AUTO)
 	{
 		//codec = CODEC_AUTO_DEF;
-		codec == codecAutoDef;
+		codec = codecAutoDef;
 	}
 	if(codec == CODEC_GBK)
 	{
