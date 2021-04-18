@@ -42,7 +42,7 @@ static : $(OBJECT)
 shared :
 	g++ -shared -fPIC $(COMPILE_OPTION) $(SOURCE) $(SHOWINFO) $(OPTIONS) $(INC) -o $(TARGET)
 
-.PHONY clean:
+.PHONY: clean
 clean :
 ifeq ($(SYSTEM),windows)
 	del $(OBJECT)
