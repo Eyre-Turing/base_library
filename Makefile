@@ -67,7 +67,7 @@ endif
 %$(SHARED_LIB_SUFFIX) :
 	cd $(dir $@) && $(MAKE) TARGET=$(notdir $@) COMPILE_OPTION=$(COMPILE_OPTION) SYSTEM=$(SYSTEM) shared
 
-.PHONY clean:
+.PHONY: clean
 clean :
 ifeq ($(SYSTEM),windows)
 	del $(subst /,\, $(OBJECT))
@@ -77,7 +77,7 @@ else
 	rm -f $(foreach n, $(dir $(MAKELIB_OBJ)), $(n)/*.o)
 endif
 
-.PHONY remove-lib:
+.PHONY: remove-lib
 remove-lib :
 ifeq ($(SYSTEM),windows)
 	del $(subst /,\, $(MAKELIB_OBJ))
