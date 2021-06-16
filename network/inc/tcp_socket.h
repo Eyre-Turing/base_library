@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-11 17:34.
+ * Last edit: 2021-06-13 17:10.
  */
 
 #ifdef _WIN32
@@ -51,8 +51,8 @@ public:
 	//if this is a server's socket connect from a client, the function will `delete this`.
 	void abort();
 	
-	bool write(const ByteArray &data) const;
-	bool write(const char *data, unsigned int size=0xffffffff) const;
+	bool write(const ByteArray &data);
+	bool write(const char *data, unsigned int size=0xffffffff);
 	
 	void setDisconnectedCallBack(Disconnected disconnected);
 	void setConnectedCallBack(Connected connected);
@@ -103,6 +103,8 @@ private:
 	TcpServer *m_server;
 	
 	TcpSocket(TcpServer *server, int sockfd);
+	
+	pthread_mutex_t m_readWriteMutex;
 };
 
 #endif	//TCP_SOCKET_H 

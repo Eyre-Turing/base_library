@@ -8,7 +8,7 @@
  * MinGW compile need -lws2_32.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-06 14:42.
+ * Last edit: 2021-06-13 18:02.
  */
 
 #ifdef _WIN32

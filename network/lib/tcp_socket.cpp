@@ -3,7 +3,7 @@
  * The call back function `Read` will exec in a subthread.
  *
  * Author: Eyre Turing.
- * Last edit: 2021-01-11 16:55.
+ * Last edit: 2021-06-13 17:10.
  */
 
 #include "tcp_socket.h"
@@ -112,7 +112,9 @@ void *TcpSocket::Thread::readThread(void *s)
 		}
 		
 #ifdef _WIN32
+		pthread_mutex_lock(&(tcpSocket->m_readWriteMutex));
 		size = recv(tcpSocket->m_sockfd, tcpSocket->recvBuffer, tcpSocket->recvBufferSize, 0);
+		pthread_mutex_unlock(&(tcpSocket->m_readWriteMutex));
 		if(size > 0)
 		{
 			if(tcpSocket->m_onRead)
@@ -125,6 +127,7 @@ void *TcpSocket::Thread::readThread(void *s)
 			tcpSocket->abort();
 		}
 #else
+		pthread_mutex_lock(&(tcpSocket->m_readWriteMutex));
 		ioctl(tcpSocket->m_sockfd, FIONREAD, &size);
 		if(size > 0)
 		{
@@ -135,6 +138,7 @@ void *TcpSocket::Thread::readThread(void *s)
 				recvData.append(buffer, recvSize);
 				size -= recvSize;
 			}
+			pthread_mutex_unlock(&(tcpSocket->m_readWriteMutex));
 			if(tcpSocket->m_onRead)
 			{
 				tcpSocket->m_onRead(tcpSocket, recvData);
@@ -142,6 +146,7 @@ void *TcpSocket::Thread::readThread(void *s)
 		}
 		else
 		{
+			pthread_mutex_unlock(&(tcpSocket->m_readWriteMutex));
 			tcpSocket->abort();
 		} 
 #endif
@@ -172,6 +177,8 @@ TcpSocket::TcpSocket()
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpSocket(%p) created as a client.\n", this);
 #endif
+
+	pthread_mutex_init(&m_readWriteMutex, NULL);
 }
 
 TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd(sockfd)
@@ -194,6 +201,8 @@ TcpSocket::TcpSocket(TcpServer *server, int sockfd) : m_server(server), m_sockfd
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpSocket(%p) created as a server(%p)\'s socket.\n", this, server);
 #endif
+
+	pthread_mutex_init(&m_readWriteMutex, NULL);
 }
 
 TcpSocket::~TcpSocket()
@@ -213,6 +222,8 @@ TcpSocket::~TcpSocket()
 #if NETWORK_DETAIL
 	fprintf(stdout, "TcpSocket(%p) destroyed.\n", this);
 #endif
+
+	pthread_mutex_destroy(&m_readWriteMutex);
 }
 
 int TcpSocket::connectToHost(const char *addr, unsigned short port, int family)
@@ -356,18 +367,21 @@ void TcpSocket::setConnectErrorCallBack(ConnectError connectError)
 	m_onConnectError = connectError;
 }
 
-bool TcpSocket::write(const ByteArray &data) const
+bool TcpSocket::write(const ByteArray &data)
 {
 	return write(data, data.size());
 }
 
-bool TcpSocket::write(const char *data, unsigned int size) const
+bool TcpSocket::write(const char *data, unsigned int size)
 {
 	if(size == 0xffffffff)
 	{
 		size = strlen(data);
 	}
-	return send(m_sockfd, data, size, 0)>0;
+	pthread_mutex_lock(&m_readWriteMutex);
+	bool result = send(m_sockfd, data, size, 0)>0;
+	pthread_mutex_unlock(&m_readWriteMutex);
+	return result;
 }
 
 int TcpSocket::connectStatus() const
