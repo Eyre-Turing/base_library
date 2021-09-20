@@ -8,6 +8,7 @@ using namespace std;
 #define TCP_SERVER	1
 #define TCP_CLIENT	2
 #define UDP			3
+#define JSON_TEST	4
 
 #ifndef USE_FOR
 #define USE_FOR		NOTHING
@@ -193,6 +194,30 @@ int main()
 	}
 	cout<<"input any thing to quit."<<endl;
 	cin>>data;
+	return 0;
+}
+#elif (USE_FOR == JSON_TEST)
+int main()
+{
+	Json json;
+	json["math"] = JsonNone;
+	Json &math = json["math"];
+	math["pi"] = 3.14;
+	math["e"] = 2.718;
+	math["bigshot"] = JsonArrayNone;
+	JsonArray bigshot = ((Json &)math["bigshot"]).toArray();
+	bigshot.append(String("牛顿"));
+	bigshot.append(String("欧拉"));
+	bigshot.append(String("图灵"));
+	json["web"] = JsonArrayNone;
+	JsonArray web = ((Json &)json["web"]).toArray();
+	web.append(JsonNone);
+	web[0]["url"] = String("www.baidu.com");
+	web[0]["description"] = String("百度一下，你就知道");
+	web.append(JsonNone);
+	web[1]["url"] = String("github.com");
+	web[1]["description"] = String("一个面向开源及私有软件项目的托管平台");
+	cout << json << endl;
 	return 0;
 }
 #else

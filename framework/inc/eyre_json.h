@@ -99,7 +99,7 @@ public:
 
 	static String escape(const String &str);
 
-	friend std::ofstream &operator<<(std::ofstream &out, const Json &json);
+	friend std::ostream &operator<<(std::ostream &out, const Json &json);
 
 	friend class JsonArray;
 
@@ -136,7 +136,7 @@ public:
 
 	JsonArray &operator=(const JsonArray &jsonArray);
 
-	friend std::ofstream &operator<<(std::ofstream &out, const JsonArray &jsonArray);
+	friend std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray);
 
 	friend class Json;
 
@@ -150,7 +150,7 @@ extern Json JsonNone;	// 当操作失败时会返回此Json
 extern Json::Iterator JsonIteratorNone;
 extern JsonArray JsonArrayNone;
 
-std::ofstream &operator<<(std::ofstream &out, const Json &json);
-std::ofstream &operator<<(std::ofstream &out, const JsonArray &jsonArray);
+std::ostream &operator<<(std::ostream &out, const Json &json);
+std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray);
 
 #endif

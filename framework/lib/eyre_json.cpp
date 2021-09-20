@@ -454,8 +454,9 @@ JsonArray::JsonArray(Json *json)
 
 JsonArray::JsonArray()
 {
-	m_json = NULL;
-	needDeleteJson = false;
+	m_json = new Json();
+	m_json->asArray();
+	needDeleteJson = true;
 }
 
 JsonArray::JsonArray(const JsonArray &jsonArray)
@@ -524,13 +525,8 @@ JsonArray &JsonArray::operator=(const JsonArray &jsonArray)
 static size_t currentOutputJsonDepth = 0;	// 当前输出json到哪一层了
 static size_t depthSpaces = 2;				// 每升一层往右偏移多少个空格
 
-std::ofstream &operator<<(std::ofstream &out, const Json &json)
+std::ostream &operator<<(std::ostream &out, const Json &json)
 {
-	for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
-	{
-		out << " ";
-	}
-
 	switch (json.m_type)
 	{
 	case JSON_NONE:
@@ -554,18 +550,25 @@ std::ofstream &operator<<(std::ofstream &out, const Json &json)
 		break;
 	case JSON_ARRAY:
 	{
-		++currentOutputJsonDepth;
 		out << Json(json).toArray();
-		--currentOutputJsonDepth;
 		break;
 	}
 	case JSON_OBJECT:
 	{
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
 		std::vector<String> keys = json.keys();
 		size_t keycount = keys.size();
 		for (size_t i = 0; i < keycount; ++i)
 		{
-			out << keys[i] << ":\n";
+			
+			for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
+			{
+				out << " ";
+			}
+			out << keys[i] << ": ";
 			++currentOutputJsonDepth;
 			out << json[keys[i]];
 			--currentOutputJsonDepth;
@@ -578,17 +581,22 @@ std::ofstream &operator<<(std::ofstream &out, const Json &json)
 	return out;
 }
 
-std::ofstream &operator<<(std::ofstream &out, const JsonArray &jsonArray)
+std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray)
 {
-	for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
+	if (currentOutputJsonDepth > 0)
 	{
-		out << " ";
+		out << "\n";
 	}
-
 	size_t count = jsonArray.size();
 	for (size_t i = 0; i < count; ++i)
 	{
-		out << jsonArray[i];
+		for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
+		{
+			out << " ";
+		}
+		++currentOutputJsonDepth;
+		out << "- " << jsonArray[i];
+		--currentOutputJsonDepth;
 	}
 
 	return out;
