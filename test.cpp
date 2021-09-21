@@ -200,24 +200,61 @@ int main()
 int main()
 {
 	Json json;
+	cout << "传统赋值方式" << endl;
 	json["math"] = JsonNone;
 	Json &math = json["math"];
 	math["pi"] = 3.14;
 	math["e"] = 2.718;
 	math["bigshot"] = JsonArrayNone;
 	JsonArray bigshot = ((Json &)math["bigshot"]).toArray();
-	bigshot.append(String("牛顿"));
-	bigshot.append(String("欧拉"));
-	bigshot.append(String("图灵"));
+	bigshot.append("牛顿");
+	bigshot.append("欧拉");
+	bigshot.append("图灵");
 	json["web"] = JsonArrayNone;
 	JsonArray web = ((Json &)json["web"]).toArray();
 	web.append(JsonNone);
-	web[0]["url"] = String("www.baidu.com");
-	web[0]["description"] = String("百度一下，你就知道");
+	web[0]["url"] = "www.baidu.com";
+	web[0]["description"] = "百度一下，你就知道";
 	web.append(JsonNone);
-	web[1]["url"] = String("github.com");
-	web[1]["description"] = String("一个面向开源及私有软件项目的托管平台");
+	web[1]["url"] = "github.com";
+	web[1]["description"] = "一个面向开源及私有软件项目的托管平台";
 	cout << json << endl;
+
+	cout << json.toString(true) << endl;
+	File file("test.json");
+	file.open(FILE_OPEN_MODE_Write);
+	file.write(ByteArray::fromString(json.toString(true)));
+	file.close();
+
+	cout << "取值" << endl;
+	cout << "pi = " << ((Json &)((Json &)json["math"])["pi"]).number() << endl;
+	cout << "e = " << ((Json &)json["math"]["e"]).number() << endl;
+
+	cout << "快速赋值方式" << endl;
+	json = JsonNone;
+	json["author"]["name"]["Chinese"] = "赵振海";
+	json["author"]["name"]["English"] = "Eyre Turing";
+	json["author"]["age"] = 23.0;
+	json["author"]["male"] = true;
+	json["author"]["friend"] = JsonArrayNone;
+	JsonArray authorFriend = ((Json &)json["author"]["friend"]).toArray();
+	authorFriend.append("胡婉茹");
+	authorFriend.append("翁朝曦");
+	authorFriend.append("龙文汉");
+	json["app"]["version"] = "1.0.0.20210921_beta";
+	json["app"]["whatsnew"] = "添加了JSON模块";
+	cout << json <<endl;
+
+	cout << json.toString() << endl;
+	cout << json.toString(true) << endl;
+
+	cout << "取值" << endl;
+	cout << "作者中文名: " << ((Json &)json["author"]["name"]["Chinese"]).string() << endl;
+	cout << "作者朋友: " << endl;
+	for (size_t i = 0; i < ((Json &)json["author"]["friend"]).toArray().size(); ++i)
+	{
+		cout << "  - " << ((Json &)json["author"]["friend"]).toArray()[i].string() << endl;
+	}
 	return 0;
 }
 #else

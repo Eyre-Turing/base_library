@@ -89,6 +89,11 @@ Json::Json(const String &val) : Json()
 	asString(val);
 }
 
+Json::Json(const char *val, StringCodec codec) : Json()
+{
+	asString(String(val, codec));
+}
+
 Json::Json(const JsonArray &val) : Json()
 {
 	asArray(val);
@@ -313,14 +318,107 @@ bool Json::remove(const String &key)
 Json Json::parseFromText(const String &text)
 {
 	Json json;
+	size_t len = text.size();
+	int beg = 0;
+	for (beg = 0; beg < len && text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r'; ++beg);
+	if (beg == len)	// 没有正文
+	{
+		return json;
+	}
 
 	return json;
 }
 
-String Json::toString(bool fold) const
+static String pad(size_t dep, size_t space)
+{
+	String str = "\n";
+	for (size_t s = 0; s < dep*space; ++s)
+	{
+		str  += " ";
+	}
+	return str;
+}
+
+String Json::toString(bool fold, size_t dep, size_t space) const
 {
 	String str;
-
+	if (m_type == JSON_ARRAY)
+	{
+		str += "[";
+		size_t count = m_arrval.size();
+		for (size_t i = 0; i < count; ++i)
+		{
+			if (i)
+			{
+				str += ",";
+			}
+			if (fold)
+			{
+				str += pad(dep+1, space);
+			}
+			str += m_arrval[i]->toString(fold, dep+1);
+		}
+		if (fold)
+		{
+			str += pad(dep, space);
+		}
+		str += "]";
+	}
+	else if (m_type == JSON_OBJECT)
+	{
+		str += "{";
+		for (std::map<String, Json *>::const_iterator it = m_objval.begin();
+			it != m_objval.end();
+			++it)
+		{
+			if (it != m_objval.begin())
+			{
+				str += ",";
+			}
+			if (fold)
+			{
+				str += pad(dep+1, space);
+			}
+			str += "\""+it->first+"\":";
+			if (fold)
+			{
+				str += " ";
+			}
+			str += it->second->toString(fold, dep+1);
+		}
+		if (fold)
+		{
+			str += pad(dep, space);
+		}
+		str += "}";
+	}
+	else
+	{
+		switch (m_type)
+		{
+		case JSON_NONE:
+			str += "none";
+			break;
+		case JSON_BOOLEAN:
+			if (m_bolval)
+			{
+				str += "true";
+			}
+			else
+			{
+				str += "false";
+			}
+			break;
+		case JSON_NUMBER:
+			str += String::fromNumber(m_numval);
+			break;
+		case JSON_STRING:
+			str += "\""+escape(m_strval)+"\"";
+			break;
+		default:
+			;
+		}
+	}
 	return str;
 }
 
@@ -360,6 +458,11 @@ Json &Json::operator=(const String &val)
 	asString(val);
 }
 
+Json &Json::operator=(const char *val)
+{
+	asString(String(val));
+}
+
 Json &Json::operator=(const JsonArray &val)
 {
 	asArray(val);
@@ -370,7 +473,7 @@ Json::Iterator::Iterator()
 	m_j = NULL;
 }
 
-Json::Iterator::Iterator(Json *json, std::map<String, Json *>::iterator &it, const String &key)
+Json::Iterator::Iterator(Json *json, const std::map<String, Json *>::iterator &it, const String &key)
 {
 	m_j = json;
 	m_it = it;
@@ -379,6 +482,10 @@ Json::Iterator::Iterator(Json *json, std::map<String, Json *>::iterator &it, con
 
 Json::Iterator::operator Json &()
 {
+	if (!m_j)
+	{
+		return JsonNone;
+	}
 	if (m_it == m_j->m_objval.end())
 	{
 		return JsonNone;
@@ -388,32 +495,76 @@ Json::Iterator::operator Json &()
 
 Json::Iterator &Json::Iterator::operator=(const Json &json)
 {
-	m_j->set(m_key, json);
+	if (m_j)
+	{
+		m_j->set(m_key, json);
+	}
 	return *this;
 }
 
 Json::Iterator &Json::Iterator::operator=(bool val)
 {
-	m_j->set(m_key, Json(val));
+	if (m_j)
+	{
+		m_j->set(m_key, Json(val));
+	}
 	return *this;
 }
 
 Json::Iterator &Json::Iterator::operator=(double val)
 {
-	m_j->set(m_key, Json(val));
+	if (m_j)
+	{
+		m_j->set(m_key, Json(val));
+	}
 	return *this;
 }
 
 Json::Iterator &Json::Iterator::operator=(const String &val)
 {
-	m_j->set(m_key, Json(val));
+	if (m_j)
+	{
+		m_j->set(m_key, Json(val));
+	}
+	return *this;
+}
+
+Json::Iterator &Json::Iterator::operator=(const char *val)
+{
+	if (m_j)
+	{
+		m_j->set(m_key, Json(String(val)));
+	}
 	return *this;
 }
 
 Json::Iterator &Json::Iterator::operator=(const JsonArray &val)
 {
-	m_j->set(m_key, Json(val));
+	if (m_j)
+	{
+		m_j->set(m_key, Json(val));
+	}
 	return *this;
+}
+
+Json::Iterator Json::Iterator::operator[](const String &key)
+{
+	if (!m_j)
+	{
+		return *this;
+	}
+	if (m_it == m_j->m_objval.end())	// 原先元素不存在
+	{
+		m_j->set(m_key, Json());	// 创建
+		m_it = m_j->m_objval.find(m_key);	// 更新迭代器
+	}
+	
+	if (m_it->second->m_type != JSON_OBJECT && m_it->second->m_type != JSON_NONE)	// 类型不对
+	{
+		m_it->second->asObject();	// 强行转换为JSON_NONE
+	}
+
+	return Iterator(m_it->second, m_it->second->m_objval.find(key), key);
 }
 
 static std::map<char, String> genEscapeMethod()
@@ -443,6 +594,13 @@ String Json::escape(const String &str)
 			result += it->second;
 		}
 	}
+	return result;
+}
+
+String Json::descript(const String &str)
+{
+	String result = "";
+
 	return result;
 }
 

@@ -36,6 +36,7 @@ public:
 	Json(bool val);
 	Json(double val);
 	Json(const String &val);
+	Json(const char *val, StringCodec codec = CODEC_AUTO);
 	Json(const JsonArray &val);
 
 	virtual ~Json();
@@ -64,7 +65,7 @@ public:
 	bool remove(const String &key);						// 删除键值对，this是json对象且key存在则删除并返回true，否则返回false
 	
 	static Json parseFromText(const String &text);	// 从文本解析json
-	String toString(bool fold = false) const;		// 输出为字符串，参数fold控制输出文本是否折行美化
+	String toString(bool fold = false, size_t dep = 0, size_t space = 2) const;		// 输出为字符串，参数fold控制输出文本是否折行美化
 
 	std::vector<String> keys() const;
 
@@ -72,7 +73,7 @@ public:
 	{
 	public:
 		Iterator();
-		Iterator(Json *json, std::map<String, Json *>::iterator &it, const String &key);
+		Iterator(Json *json, const std::map<String, Json *>::iterator &it, const String &key);
 
 		operator Json &();
 
@@ -80,7 +81,10 @@ public:
 		Iterator &operator=(bool val);
 		Iterator &operator=(double val);
 		Iterator &operator=(const String &val);
+		Iterator &operator=(const char *val);
 		Iterator &operator=(const JsonArray &val);
+
+		Iterator operator[](const String &key);	// 强行插入，如果原先不是JSON_OBJECT对象会强行转换并清除原先数据，如果原先不存在该对象会创建
 
 	private:
 		Json *m_j;
@@ -95,9 +99,11 @@ public:
 	Json &operator=(bool val);
 	Json &operator=(double val);
 	Json &operator=(const String &val);
+	Json &operator=(const char *val);
 	Json &operator=(const JsonArray &val);
 
-	static String escape(const String &str);
+	static String escape(const String &str);	// 转义
+	static String descript(const String &str);	// 还原转义
 
 	friend std::ostream &operator<<(std::ostream &out, const Json &json);
 
