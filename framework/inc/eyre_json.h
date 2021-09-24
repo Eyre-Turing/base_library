@@ -14,6 +14,7 @@
 #include <iostream>
 #include "eyre_string.h"
 
+#define JSON_NULL		(-1)	// 不可编辑的json对象
 #define JSON_NONE		0		// JSON_NONE和JSON_OBJECT是可以互相转换的，当JSON_OBJECT没有数据时会变成JSON_NONE
 #define JSON_BOOLEAN	1
 #define JSON_NUMBER		2
@@ -30,6 +31,7 @@ class JsonArray;
 class Json
 {
 public:
+	static Json null();	// 生成一个不可编辑的json对象
 	Json();
 	Json(const Json &json);		// 深复制（包括ARRAY和OBJECT，都重新分配内存）
 

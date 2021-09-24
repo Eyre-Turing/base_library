@@ -199,6 +199,19 @@ int main()
 #elif (USE_FOR == JSON_TEST)
 int main()
 {
+	cout << "JsonNone 显示结果为: " << JsonNone << endl;
+	cout << "如果对JsonNone 赋值的话: " << endl;
+	JsonNone = "hello";
+	cout << "JsonNone 显示结果为: " << JsonNone << endl;
+	cout << "如果对 JsonNone 添加下标: " << endl;
+	JsonNone["test"] = 1.2;
+	cout << "JsonNone 显示结果为: " << JsonNone << endl;
+
+	cout << "JsonArrayNone 显示结果为: " << JsonArrayNone << endl;
+	Json test = JsonArrayNone;
+	test.toArray().append("hello world");
+	cout << test << endl;
+
 	Json json;
 	cout << "传统赋值方式" << endl;
 	json["math"] = JsonNone;

@@ -6,9 +6,16 @@
  * 最后编辑于: 2021/09/20 16:41
  */
 
-Json JsonNone;
+Json JsonNone = Json::null();
 Json::Iterator JsonIteratorNone;
 JsonArray JsonArrayNone;
+
+Json Json::null()
+{
+	Json result = Json();
+	result.m_type = JSON_NULL;
+	return result;
+}
 
 Json::Json()
 {
@@ -18,8 +25,16 @@ Json::Json()
 
 void Json::asObject(const Json &json, Json *parent)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	m_parent = parent;
 	m_type = json.m_type;
+	if (m_type == JSON_NULL)	// 会影响使用方便性，替换为JSON_NONE
+	{
+		m_type = JSON_NONE;
+	}
 	switch (m_type)
 	{
 	case JSON_NONE:
@@ -53,9 +68,10 @@ void Json::asObject(const Json &json, Json *parent)
 		break;
 	}
 	default:
-#ifdef EYRE_DEBUG
+#if EYRE_DEBUG
 		fprintf(stderr, "Json(%p) unknow data type \'%d\'!\n", this, m_type);
 #endif
+		;
 	}
 }
 
@@ -124,6 +140,10 @@ void Json::cleanOldTypeData()
 
 void Json::asBoolean(bool val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	cleanOldTypeData();
 	m_type = JSON_BOOLEAN;
 	m_bolval = val;
@@ -131,6 +151,10 @@ void Json::asBoolean(bool val)
 
 void Json::asNumber(double val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	cleanOldTypeData();
 	m_type = JSON_NUMBER;
 	m_numval = val;
@@ -138,6 +162,10 @@ void Json::asNumber(double val)
 
 void Json::asString(const String &val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	cleanOldTypeData();
 	m_type = JSON_STRING;
 	m_strval = val;
@@ -145,12 +173,20 @@ void Json::asString(const String &val)
 
 void Json::asArray()
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	cleanOldTypeData();
 	m_type = JSON_ARRAY;
 }
 
 void Json::asArray(const JsonArray &val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	asArray();
 	size_t count = val.m_json->m_arrval.size();
 	for (size_t i = 0; i < count; ++i)
@@ -161,12 +197,20 @@ void Json::asArray(const JsonArray &val)
 
 void Json::asObject()
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	cleanOldTypeData();
 	m_type = JSON_NONE;		// 因为没有数据了，所以先转换为JSON_NONE状态
 }
 
 void Json::asObject(const Json &val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return ;
+	}
 	asObject();
 	for (std::map<String, Json *>::const_iterator it = val.m_objval.begin();
 		it != val.m_objval.end();
@@ -191,7 +235,7 @@ const Json &Json::operator[](const String &key) const
 {
 	if (m_type != JSON_OBJECT && m_type != JSON_NONE)
 	{
-#ifdef EYRE_DEBUG
+#if EYRE_DEBUG
 		fprintf(stderr, "Json(%p) isn\'t a object!\n", this);
 #endif
 		return JsonNone;
@@ -288,7 +332,7 @@ int Json::set(const String &key, const Json &val)
 	{
 		method = JSON_APPEND;
 	}
-	m_objval[key] = new Json(val);
+	m_objval[key] = new Json(val, this);
 	if (m_type == JSON_NONE)
 	{
 		m_type = JSON_OBJECT;
@@ -440,32 +484,62 @@ std::vector<String> Json::keys() const
 
 Json &Json::operator=(const Json &json)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asObject(json);
+	return *this;
 }
 
 Json &Json::operator=(bool val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asBoolean(val);
+	return *this;
 }
 
 Json &Json::operator=(double val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asNumber(val);
+	return *this;
 }
 
 Json &Json::operator=(const String &val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asString(val);
+	return *this;
 }
 
 Json &Json::operator=(const char *val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asString(String(val));
+	return *this;
 }
 
 Json &Json::operator=(const JsonArray &val)
 {
+	if (m_type == JSON_NULL)
+	{
+		return *this;
+	}
 	asArray(val);
+	return *this;
 }
 
 Json::Iterator::Iterator()
@@ -612,9 +686,8 @@ JsonArray::JsonArray(Json *json)
 
 JsonArray::JsonArray()
 {
-	m_json = new Json();
-	m_json->asArray();
-	needDeleteJson = true;
+	m_json = &JsonNone;
+	needDeleteJson = false;
 }
 
 JsonArray::JsonArray(const JsonArray &jsonArray)
@@ -633,12 +706,20 @@ JsonArray::~JsonArray()
 
 size_t JsonArray::size() const
 {
+	if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
+	{
+		return 0;
+	}
 	return m_json->m_arrval.size();
 }
 
 void JsonArray::append(const Json &json)
 {
-	m_json->m_arrval.push_back(new Json(json));
+	if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
+	{
+		return ;
+	}
+	m_json->m_arrval.push_back(new Json(json, m_json));
 }
 
 bool JsonArray::remove(size_t index)
@@ -687,6 +768,9 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 {
 	switch (json.m_type)
 	{
+	case JSON_NULL:
+		out << "null" << "\n";
+		break;
 	case JSON_NONE:
 		out << "none" << "\n";
 		break;
@@ -734,7 +818,7 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 		break;
 	}
 	default:
-		out << "Error: Unknow type!" << "\n";
+		out << "Error: Unknow type \'" << json.m_type << "\'!" << "\n";
 	}
 	return out;
 }
