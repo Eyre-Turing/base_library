@@ -242,10 +242,52 @@ int main()
 	json["com"]["github"]["www"]["code-url"] = "https://github.com/Eyre-Turing/base_library";
 	cout << json << endl;
 
-	cout << String("不美化") << endl;
+	File fileWrite("test.json");
+	fileWrite.open(FILE_OPEN_MODE_Write);
+	fileWrite.write(ByteArray::fromString(json.toString(true)));
+	fileWrite.close();
+
+	cout << "json.com.github.www.description: " << endl;
+	cout << json["com"]["github"]["www"]["description"] << endl;
+	cout << "descript json.com.github.www.description: " << endl;
+	cout << json["com"]["github"]["www"]["description"].obj().string() << endl;
+
+	Json &t1 = json["com"]["github"];
+	cout << "json.com.github:" << endl;
+	cout << t1 << endl;
+	cout << "json.com:" << endl;
+	cout << t1.parent() << endl;
+
+	Json &t2 = json["author"]["be-good-at"].toArray()[0];
+	cout << "json.author.be-good-at[0]:" << endl;
+	cout << t2 << endl;
+	cout << "json.author.be-goot-at" << endl;
+	cout << t2.parent() << endl;
+	cout << "json.author" << endl;
+	cout << t2.parent().parent() << endl;
+	cout << "json" << endl;
+	cout << t2.parent().parent().parent() << endl;
+
+	cout << String("转文本:") << endl;
+	cout << String("不美化:") << endl;
 	cout << json.toString() << endl;
-	cout << String("美化") << endl;
+	cout << String("美化:") << endl;
 	cout << json.toString(true) << endl;
+
+	cout << String("清空") << endl;
+	json = JsonNone;
+	cout << "json: " << json << endl;
+
+	cout << String("读取json文本") << endl;
+	File fileRead("test.json");
+	fileRead.open(FILE_OPEN_MODE_Read);
+	String jsonStr = fileRead.readAll().toString();
+	fileRead.close();
+
+	json = Json::parseFromText(jsonStr);
+
+	cout << json << endl;
+
 	return 0;
 }
 #else

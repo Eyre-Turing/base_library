@@ -382,15 +382,186 @@ bool Json::remove(const String &key)
 	return true;
 }
 
-Json Json::parseFromText(const String &text)
+Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 {
-	Json json;
 	size_t len = text.size();
-	int beg = 0;
-	for (beg = 0; beg < len && text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r'; ++beg);
+	for (; beg < len && (text.at(beg) == ' ' || text.at(beg) == '\n' || text.at(beg) == '\r' || text.at(beg) == ','); ++beg);	// 忽略空格、换行、逗号
 	if (beg == len)	// 没有正文
 	{
-		return json;
+		return JsonNone;
+	}
+
+	Json json;
+
+	/*
+	 * 第一个匹配到的符号有6种情况
+	 * 1、匹配到 { ，表示接下来是一个json数据
+	 * 2、匹配到 [ ，表示接下来是一个列表
+	 * 3、匹配到 " ，表示整个是一个字符串
+	 * 4、匹配到 [0-9] ，表示整个是一个数字
+	 * 5、匹配到 [tf] ，表示整个是一个布尔
+	 * 6、匹配到 n ，表示是一个空json
+	 */
+	if (text.at(beg) == '{')	// 扫描直到遇到 } 完成数据解析（因为用递归的方法去做，所有即使内部也有若干{ }，也是在递归里就完成了，在最外层匹配到的第一个 } 就会是结束标志了）
+	{
+		json.asObject();
+		for (++beg; beg < len && text.at(beg) != '}'; ++beg)
+		{
+			if (text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r' && text.at(beg) != ',')	// 忽略空格、换行、逗号
+			{
+				// 第一个匹配到的符号只可能为 " ，表示接下来是一个键
+				if (text.at(beg) != '\"')
+				{
+					// 出问题了，文本不正常
+					if (endpos)
+					{
+						*endpos = len;
+					}
+					return JsonNone;
+				}
+				size_t e = text.indexOf("\"", beg+1);
+				if (e == -1)	// 双引号不匹配，文本不正常
+				{
+					if (endpos)
+					{
+						*endpos = len;
+					}
+					return JsonNone;
+				}
+				String key = text.mid(beg+1, e-beg-1);	// 得到键
+				e = text.indexOf(":", e+1);	// 找 : 这是值开始的标志
+				if (e == -1)	// 键后面没有 : ，文本不正常
+				{
+					if (endpos)
+					{
+						*endpos = len;
+					}
+					return JsonNone;
+				}
+				json[key] = parseFromText(text, e+1, &beg);		// 这里会刷新beg的值，文本偏移将直接跳转到子json的后面
+			}
+		}
+		if (endpos)
+		{
+			*endpos = beg;
+		}
+	}
+	else if (text.at(beg) == '[')	// 扫描直到遇到 ]
+	{
+		json.asArray();
+		JsonArray jsonArray = json.toArray();
+		for (++beg; beg < len && text.at(beg) != ']'; ++beg)
+		{
+			if (text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r' && text.at(beg) != ',')	// 忽略空格、换行、逗号
+			{
+				// 直接匹配子json
+				jsonArray.append(parseFromText(text, beg, &beg));
+			}
+		}
+		if (endpos)
+		{
+			*endpos = beg;
+		}
+	}
+	else if (text.at(beg) == '\"')	// 匹配直到 " ，遇到转义的双引号要继续往下获取
+	{
+		size_t e;
+		bool en = false;	// 当前文本是否进入转义状态
+		for (e = beg+1; e < len; ++e)
+		{
+			if (en)	// 转义状态
+			{
+				en = false;	// 转义状态遇到什么字符都不需要理会，取消转义状态即可
+			}
+			else if (text.at(e) == '\\')	// 非转义状态遇到转义标志字符
+			{
+				en = true;	// 进入转义状态
+			}
+			else if (text.at(e) == '\"')	// 非转义状态遇到 "
+			{
+				break;
+			}
+		}
+		if (e == len)
+		{
+			// 双引号不匹配，文本不正常
+			if (endpos)
+			{
+				*endpos = len;
+			}
+			return JsonNone;
+		}
+		json = descript(text.mid(beg+1, e-beg-1));
+		if (endpos)
+		{
+			*endpos = e+1;
+		}
+	}
+	else if (text.at(beg) >= '0' && text.at(beg) <= '9')	// 匹配直到任意 [^0-9.]
+	{
+		size_t e;
+		for (e = beg; e < len && ((text.at(e) >= '0' && text.at(e) <= '9') || text.at(e) == '.'); ++e);
+		if (e == len)
+		{
+			if (endpos)
+			{
+				*endpos = len;
+			}
+			return JsonNone;
+		}
+		json = text.mid(beg, e-beg).toDouble();
+		if (endpos)
+		{
+			*endpos = e+1;
+		}
+	}
+	else if (text.at(beg) == 't')	// 匹配4个字符
+	{
+		if (text.mid(beg, 4) != "true")
+		{
+			if (endpos)
+			{
+				*endpos = len;
+			}
+			return JsonNone;
+		}
+		json = true;
+		if (endpos)
+		{
+			*endpos = beg+4;
+		}
+	}
+	else if (text.at(beg) == 'f')	// 匹配5个字符
+	{
+		if (text.mid(beg, 5) != "false")
+		{
+			if (endpos)
+			{
+				*endpos = len;
+			}
+			return JsonNone;
+		}
+		json = false;
+		if (endpos)
+		{
+			*endpos = beg+5;
+		}
+	}
+	else if (text.at(beg) == 'n')	// 匹配4个字符
+	{
+		if (text.mid(beg, 4) != "null")
+		{
+			if (endpos)
+			{
+				*endpos = len;
+			}
+			return JsonNone;
+		}
+		json = JsonNone;
+		if (endpos)
+		{
+			*endpos = beg+4;
+		}
 	}
 
 	return json;
@@ -464,10 +635,10 @@ String Json::toString(bool fold, size_t dep, size_t space) const
 		switch (m_type)
 		{
 		case JSON_NULL:
-			str += "none";
+			str += "null";
 			break;
 		case JSON_NONE:
-			str += "none";
+			str += "null";
 			break;
 		case JSON_BOOLEAN:
 			if (m_bolval)
@@ -590,7 +761,7 @@ Json::Iterator::Iterator(Json *json, const std::map<String, Json *>::iterator &i
 	m_key = key;
 }
 
-Json::Iterator::operator Json &()
+Json &Json::Iterator::obj()
 {
 	if (!m_j)
 	{
@@ -601,6 +772,11 @@ Json::Iterator::operator Json &()
 		return JsonNone;
 	}
 	return *(m_it->second);
+}
+
+Json::Iterator::operator Json &()
+{
+	return obj();
 }
 
 Json::Iterator &Json::Iterator::operator=(const Json &json)
@@ -690,9 +866,11 @@ JsonArray Json::Iterator::toArray()
 static std::map<char, String> genEscapeMethod()
 {
 	std::map<char, String> result;
+	result['\r'] = "\\r";
 	result['\n'] = "\\n";
 	result['\t'] = "\\t";
 	result['\"'] = "\\\"";
+	result['\\'] = "\\\\";
 	return result;
 }
 
@@ -717,10 +895,38 @@ String Json::escape(const String &str)
 	return result;
 }
 
+static std::map<char, char> genDescriptMethod()
+{
+	std::map<char, char> result;
+	result['r'] = '\r';
+	result['n'] = '\n';
+	result['t'] = '\t';
+	result['\"'] = '\"';
+	result['\\'] = '\\';
+	return result;
+}
+
 String Json::descript(const String &str)
 {
-	String result = "";
+	static std::map<char, char> descriptMethod = genDescriptMethod();
 
+	String result = "";
+	size_t len = str.size();
+	for (size_t i = 0; i < len; ++i)
+	{
+		if (str.at(i) == '\\' && ++i < len)	// 以反斜杠为转义字符开始标志
+		{
+			std::map<char, char>::const_iterator it = descriptMethod.find(str.at(i));
+			if (it != descriptMethod.end())
+			{
+				result += it->second;
+			}
+		}
+		else
+		{
+			result += str.at(i);
+		}
+	}
 	return result;
 }
 
@@ -863,7 +1069,6 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 		break;
 	case JSON_ARRAY:
 	{
-		// out << Json(json).toArray();
 		if (currentOutputJsonDepth > 0)
 		{
 			out << "\n";
@@ -911,22 +1116,6 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 
 std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray)
 {
-	// if (currentOutputJsonDepth > 0)
-	// {
-	// 	out << "\n";
-	// }
-	// size_t count = jsonArray.size();
-	// for (size_t i = 0; i < count; ++i)
-	// {
-	// 	for (size_t j = 0; j < currentOutputJsonDepth*depthSpaces; ++j)
-	// 	{
-	// 		out << " ";
-	// 	}
-	// 	++currentOutputJsonDepth;
-	// 	out << "- " << jsonArray[i];
-	// 	--currentOutputJsonDepth;
-	// }
-
 	out << JsonArray(jsonArray).toJson();
 
 	return out;

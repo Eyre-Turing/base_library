@@ -69,7 +69,7 @@ public:
 	int set(const String &key, const Json &val);		// 加入键值对，返回操作状态，将以复制val的形式加入
 	bool remove(const String &key);						// 删除键值对，this是json对象且key存在则删除并返回true，否则返回false
 	
-	static Json parseFromText(const String &text);	// 从文本解析json
+	static Json parseFromText(const String &text, size_t beg = 0, size_t *endpos = NULL);	// 从文本解析json，beg为解析开始偏移位置，endpos为解析完毕后的偏移位置（不是相对beg的位置，而是按text的下标位置）
 	String toString(bool fold = false, size_t dep = 0, size_t space = 2) const;		// 输出为字符串，参数fold控制输出文本是否折行美化
 
 	std::vector<String> keys() const;
@@ -82,6 +82,7 @@ public:
 		Iterator();
 		Iterator(Json *json, const std::map<String, Json *>::iterator &it, const String &key);
 
+		Json &obj();	// 获取json对象
 		operator Json &();
 
 		Iterator &operator=(const Json &json);
