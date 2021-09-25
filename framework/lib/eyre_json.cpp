@@ -3,7 +3,7 @@
 
 /*
  * 作者: Eyre Turing (Eyre-Turing)
- * 最后编辑于: 2021/09/20 16:41
+ * 最后编辑于: 2021/09/25 11:25
  */
 
 Json JsonNone = Json::null();
@@ -90,28 +90,45 @@ Json::~Json()
 	cleanOldTypeData();
 }
 
-Json::Json(bool val) : Json()
+Json::Json(bool val)
 {
+	m_parent = NULL;
+	m_type = JSON_NONE;
 	asBoolean(val);
 }
 
-Json::Json(double val) : Json()
+Json::Json(double val)
 {
+	m_parent = NULL;
+	m_type = JSON_NONE;
 	asNumber(val);
 }
 
-Json::Json(const String &val) : Json()
+Json::Json(int val)
 {
+	m_parent = NULL;
+	m_type = JSON_NONE;
+	asNumber(val);
+}
+
+Json::Json(const String &val)
+{
+	m_parent = NULL;
+	m_type = JSON_NONE;
 	asString(val);
 }
 
-Json::Json(const char *val, StringCodec codec) : Json()
+Json::Json(const char *val, StringCodec codec)
 {
+	m_parent = NULL;
+	m_type = JSON_NONE;
 	asString(String(val, codec));
 }
 
-Json::Json(const JsonArray &val) : Json()
+Json::Json(const JsonArray &val)
 {
+	m_parent = NULL;
+	m_type = JSON_NONE;
 	asArray(val);
 }
 
@@ -160,6 +177,11 @@ void Json::asNumber(double val)
 	m_numval = val;
 }
 
+void Json::asNumber(int val)
+{
+	asNumber((double)val);
+}
+
 void Json::asString(const String &val)
 {
 	if (m_type == JSON_NULL)
@@ -178,7 +200,7 @@ void Json::asArray()
 		return ;
 	}
 	cleanOldTypeData();
-	m_type = JSON_ARRAY;
+	m_type = JSON_NONE;		// 没有数据，为JSON_NONE类型
 }
 
 void Json::asArray(const JsonArray &val)
@@ -191,6 +213,7 @@ void Json::asArray(const JsonArray &val)
 	size_t count = val.m_json->m_arrval.size();
 	for (size_t i = 0; i < count; ++i)
 	{
+		m_type = JSON_ARRAY;
 		m_arrval.push_back(new Json(*(val.m_json->m_arrval[i]), this));
 	}
 }
@@ -300,7 +323,7 @@ String Json::string(const String &def) const
 
 JsonArray Json::toArray()
 {
-	if (m_type != JSON_ARRAY)
+	if (m_type != JSON_ARRAY && m_type != JSON_NONE)
 	{
 		return JsonArrayNone;
 	}
@@ -440,6 +463,9 @@ String Json::toString(bool fold, size_t dep, size_t space) const
 	{
 		switch (m_type)
 		{
+		case JSON_NULL:
+			str += "none";
+			break;
 		case JSON_NONE:
 			str += "none";
 			break;
@@ -482,6 +508,11 @@ std::vector<String> Json::keys() const
 	return result;
 }
 
+bool Json::isNull() const
+{
+	return m_type == JSON_NULL;
+}
+
 Json &Json::operator=(const Json &json)
 {
 	if (m_type == JSON_NULL)
@@ -510,6 +541,11 @@ Json &Json::operator=(double val)
 	}
 	asNumber(val);
 	return *this;
+}
+
+Json &Json::operator=(int val)
+{
+	return (*this)=(double)val;
 }
 
 Json &Json::operator=(const String &val)
@@ -594,6 +630,11 @@ Json::Iterator &Json::Iterator::operator=(double val)
 	return *this;
 }
 
+Json::Iterator &Json::Iterator::operator=(int val)
+{
+	return (*this)=(double)val;
+}
+
 Json::Iterator &Json::Iterator::operator=(const String &val)
 {
 	if (m_j)
@@ -639,6 +680,11 @@ Json::Iterator Json::Iterator::operator[](const String &key)
 	}
 
 	return Iterator(m_it->second, m_it->second->m_objval.find(key), key);
+}
+
+JsonArray Json::Iterator::toArray()
+{
+	return ((Json &)(*this)).toArray();
 }
 
 static std::map<char, String> genEscapeMethod()
@@ -692,7 +738,7 @@ JsonArray::JsonArray()
 
 JsonArray::JsonArray(const JsonArray &jsonArray)
 {
-	m_json = new Json(jsonArray.m_json);
+	m_json = new Json(*(jsonArray.m_json));
 	needDeleteJson = true;
 }
 
@@ -720,6 +766,7 @@ void JsonArray::append(const Json &json)
 		return ;
 	}
 	m_json->m_arrval.push_back(new Json(json, m_json));
+	m_json->m_type = JSON_ARRAY;	// 因为有数据了，所以类型修改为JSON_ARRAY
 }
 
 bool JsonArray::remove(size_t index)
@@ -729,6 +776,10 @@ bool JsonArray::remove(size_t index)
 		return false;
 	}
 	m_json->m_arrval.erase(m_json->m_arrval.begin()+index);
+	if (size() == 0)
+	{
+		m_json->m_type == JSON_NONE;
+	}
 	return true;
 }
 
@@ -769,30 +820,65 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 	switch (json.m_type)
 	{
 	case JSON_NULL:
-		out << "null" << "\n";
+		out << "none";		// JSON_NULL也显示成none，因为JSON_NULL只是用于方法调用失败时的异常返回值而已，并不是真正意义上的一个类型
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
 		break;
 	case JSON_NONE:
-		out << "none" << "\n";
+		out << "none";
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
 		break;
 	case JSON_BOOLEAN:
 		if (json.m_bolval)
 		{
-			out << "true" << "\n";
+			out << "true";
 		}
 		else
 		{
-			out << "false" << "\n";
+			out << "false";
+		}
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
 		}
 		break;
 	case JSON_NUMBER:
-		out << json.m_numval << "\n";
+		out << json.m_numval;
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
 		break;
 	case JSON_STRING:
-		out << "\"" << Json::escape(json.m_strval) << "\"" << "\n";
+		out << "\"" << Json::escape(json.m_strval) << "\"";
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
 		break;
 	case JSON_ARRAY:
 	{
-		out << Json(json).toArray();
+		// out << Json(json).toArray();
+		if (currentOutputJsonDepth > 0)
+		{
+			out << "\n";
+		}
+		size_t count = json.m_arrval.size();
+		for (size_t i = 0; i < count; ++i)
+		{
+			for (size_t j = 0; j < currentOutputJsonDepth*depthSpaces; ++j)
+			{
+				out << " ";
+			}
+			++currentOutputJsonDepth;
+			out << "- " << *(json.m_arrval[i]);
+			--currentOutputJsonDepth;
+		}
 		break;
 	}
 	case JSON_OBJECT:
@@ -806,7 +892,7 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 		for (size_t i = 0; i < keycount; ++i)
 		{
 			
-			for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
+			for (size_t j = 0; j < currentOutputJsonDepth*depthSpaces; ++j)
 			{
 				out << " ";
 			}
@@ -825,21 +911,23 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 
 std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray)
 {
-	if (currentOutputJsonDepth > 0)
-	{
-		out << "\n";
-	}
-	size_t count = jsonArray.size();
-	for (size_t i = 0; i < count; ++i)
-	{
-		for (size_t i = 0; i < currentOutputJsonDepth*depthSpaces; ++i)
-		{
-			out << " ";
-		}
-		++currentOutputJsonDepth;
-		out << "- " << jsonArray[i];
-		--currentOutputJsonDepth;
-	}
+	// if (currentOutputJsonDepth > 0)
+	// {
+	// 	out << "\n";
+	// }
+	// size_t count = jsonArray.size();
+	// for (size_t i = 0; i < count; ++i)
+	// {
+	// 	for (size_t j = 0; j < currentOutputJsonDepth*depthSpaces; ++j)
+	// 	{
+	// 		out << " ";
+	// 	}
+	// 	++currentOutputJsonDepth;
+	// 	out << "- " << jsonArray[i];
+	// 	--currentOutputJsonDepth;
+	// }
+
+	out << JsonArray(jsonArray).toJson();
 
 	return out;
 }

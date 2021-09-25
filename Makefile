@@ -22,7 +22,7 @@ endif
 # Like input -m32 for compilation a 32bit lib.
 COMPILE_OPTION = 
 
-TEST_USE_FOR = NOTHING
+TEST_USE_FOR = JSON_TEST
 
 ################################################################
 # Don't change any of the following.

@@ -11,7 +11,7 @@ using namespace std;
 #define JSON_TEST	4
 
 #ifndef USE_FOR
-#define USE_FOR		NOTHING
+#define USE_FOR		JSON_TEST
 #endif
 
 #if (USE_FOR == TCP_SERVER)
@@ -199,75 +199,53 @@ int main()
 #elif (USE_FOR == JSON_TEST)
 int main()
 {
-	cout << "JsonNone 显示结果为: " << JsonNone << endl;
-	cout << "如果对JsonNone 赋值的话: " << endl;
-	JsonNone = "hello";
-	cout << "JsonNone 显示结果为: " << JsonNone << endl;
-	cout << "如果对 JsonNone 添加下标: " << endl;
-	JsonNone["test"] = 1.2;
-	cout << "JsonNone 显示结果为: " << JsonNone << endl;
+	String::setAutoCodec(CODEC_UTF8);			// 代码保存编码为utf-8，Linux默认就是utf-8，为了解决Windows中文乱码，设置默认String输入编码为utf-8
+	cout << String("基本常量输出:") << endl;	// 因为本代码文件保存的编码是utf-8，用String包裹中文字符串可以解决Windows下中文乱码问题
+	cout << "JsonNone: " << JsonNone << endl;
+	cout << "JsonArrayNone: " << JsonArrayNone << endl;
+	cout << "JsonNone.isNull(): " << JsonNone.isNull() << endl;
+	cout << String("对常量进行赋值，检查对常量赋值的无效性:") << endl;
+	JsonNone = 1;
+	cout << "执行 JsonNone = 1 后 JsonNone: " << JsonNone << endl;
+	JsonNone["a"] = 1;
+	cout << "执行 JsonNone[\"a\"] = 1 后 JsonNone: " << JsonNone << endl;
+	JsonNone["a"]["b"] = 1;
+	cout << "执行 JsonNone[\"a\"][\"b\"] = 1 后 JsonNone: " << JsonNone << endl;
 
-	cout << "JsonArrayNone 显示结果为: " << JsonArrayNone << endl;
-	Json test = JsonArrayNone;
-	test.toArray().append("hello world");
-	cout << test << endl;
-
-	Json json;
-	cout << "传统赋值方式" << endl;
-	json["math"] = JsonNone;
-	Json &math = json["math"];
-	math["pi"] = 3.14;
-	math["e"] = 2.718;
-	math["bigshot"] = JsonArrayNone;
-	JsonArray bigshot = ((Json &)math["bigshot"]).toArray();
-	bigshot.append("牛顿");
-	bigshot.append("欧拉");
-	bigshot.append("图灵");
-	json["web"] = JsonArrayNone;
-	JsonArray web = ((Json &)json["web"]).toArray();
-	web.append(JsonNone);
-	web[0]["url"] = "www.baidu.com";
-	web[0]["description"] = "百度一下，你就知道";
-	web.append(JsonNone);
-	web[1]["url"] = "github.com";
-	web[1]["description"] = "一个面向开源及私有软件项目的托管平台";
+	cout << String("JSON赋值测试") << endl;
+	Json json = JsonNone;
+	cout << json << endl;
+	cout << json.isNull() << endl;
+	json = 1;
+	cout << json << endl;
+	json["pi"] = 3.14;	// 因为之前设置json = 1时，会把json的类型设置为JSON_NUMBER，所以这步操作必定是失败的
+	cout << json << endl;
+	json.asObject();
+	json["math"] = "数学";	// 因为之前设置json = 1时，会把json的类型设置为JSON_NUMBER，所以这步操作必定是失败的
+	cout << json << endl;
+	json["math"]["pi"] = 3.14;	// 强行赋值（方括号超过一个就会使用强行赋值）,如果发生冲突（比如这里math字段是字符串类型，但是这个操作会强行把math字段转成JSON_NONE类型）
 	cout << json << endl;
 
-	cout << json.toString(true) << endl;
-	File file("test.json");
-	file.open(FILE_OPEN_MODE_Write);
-	file.write(ByteArray::fromString(json.toString(true)));
-	file.close();
-
-	cout << "取值" << endl;
-	cout << "pi = " << ((Json &)((Json &)json["math"])["pi"]).number() << endl;
-	cout << "e = " << ((Json &)json["math"]["e"]).number() << endl;
-
-	cout << "快速赋值方式" << endl;
+	cout << String("复杂JSON赋值") << endl;
 	json = JsonNone;
-	json["author"]["name"]["Chinese"] = "赵振海";
-	json["author"]["name"]["English"] = "Eyre Turing";
-	json["author"]["age"] = 23.0;
-	json["author"]["male"] = true;
-	json["author"]["friend"] = JsonArrayNone;
-	JsonArray authorFriend = ((Json &)json["author"]["friend"]).toArray();
-	authorFriend.append("胡婉茹");
-	authorFriend.append("翁朝曦");
-	authorFriend.append("龙文汉");
-	json["app"]["version"] = "1.0.0.20210921_beta";
-	json["app"]["whatsnew"] = "添加了JSON模块";
-	cout << json <<endl;
+	json["author"]["github-name"] = "Eyre Turing";
+	json["author"]["birthday"] = "不告诉你";
+	json["author"]["age"] = "23";
+	json["author"]["be-good-at"] = JsonArrayNone;
+	JsonArray be_good_at = json["author"]["be-good-at"].toArray();
+	be_good_at.append("C");
+	be_good_at.append("C++");
+	be_good_at.append("Go");
+	be_good_at.append("Python");
+	be_good_at.append("Java");
+	json["com"]["github"]["www"]["description"] = "github";
+	json["com"]["github"]["www"]["code-url"] = "https://github.com/Eyre-Turing/base_library";
+	cout << json << endl;
 
+	cout << String("不美化") << endl;
 	cout << json.toString() << endl;
+	cout << String("美化") << endl;
 	cout << json.toString(true) << endl;
-
-	cout << "取值" << endl;
-	cout << "作者中文名: " << ((Json &)json["author"]["name"]["Chinese"]).string() << endl;
-	cout << "作者朋友: " << endl;
-	for (size_t i = 0; i < ((Json &)json["author"]["friend"]).toArray().size(); ++i)
-	{
-		cout << "  - " << ((Json &)json["author"]["friend"]).toArray()[i].string() << endl;
-	}
 	return 0;
 }
 #else

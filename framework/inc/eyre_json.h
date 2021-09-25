@@ -4,9 +4,10 @@
 /*
  * json读写能力
  * 非线程安全
+ * 内部实现全是深复制，不存在两个及以上json同时引用同一个内存地址的情况
  * 
  * 作者: Eyre Turing (Eyre-Turing)
- * 最后编辑于: 2021-09-18 23:04
+ * 最后编辑于: 2021-09-25 11:24
  */
 
 #include <vector>
@@ -14,13 +15,13 @@
 #include <iostream>
 #include "eyre_string.h"
 
-#define JSON_NULL		(-1)	// 不可编辑的json对象
-#define JSON_NONE		0		// JSON_NONE和JSON_OBJECT是可以互相转换的，当JSON_OBJECT没有数据时会变成JSON_NONE
+#define JSON_NULL		(-1)	// 不可编辑的json对象，用于方法调用失败时的异常返回值类型
+#define JSON_NONE		0		// JSON_NONE和JSON_ARRAY, JSON_OBJECT是可以互相转换的，当JSON_ARRAY或JSON_OBJECT没有数据时会变成JSON_NONE
 #define JSON_BOOLEAN	1
 #define JSON_NUMBER		2
 #define JSON_STRING		3
-#define JSON_ARRAY		4
-#define JSON_OBJECT		5		// 当往JSON_NONE里添加数据时，JSON_NONE也会变成JSON_OBJECT
+#define JSON_ARRAY		4		// 当往JSON_NONE里添加元素时，JSON_NONE也会变成JSON_ARRAY
+#define JSON_OBJECT		5		// 当往JSON_NONE里添加键值对时，JSON_NONE也会变成JSON_OBJECT
 
 #define JSON_FAIL		0
 #define JSON_APPEND		1
@@ -37,6 +38,7 @@ public:
 
 	Json(bool val);
 	Json(double val);
+	Json(int val);
 	Json(const String &val);
 	Json(const char *val, StringCodec codec = CODEC_AUTO);
 	Json(const JsonArray &val);
@@ -44,7 +46,8 @@ public:
 	virtual ~Json();
 
 	void asBoolean(bool val = false);					// 保存数据为布尔
-	void asNumber(double val = 0);						// 保存数据为数字
+	void asNumber(double val = 0.0);					// 保存数据为数字
+	void asNumber(int val = 0);
 	void asString(const String &val = "");				// 保存数据为文本
 	void asArray();
 	void asArray(const JsonArray &val);				// 保存数据为列表
@@ -71,6 +74,8 @@ public:
 
 	std::vector<String> keys() const;
 
+	bool isNull() const;	// 是否是JSON_NULL类型，用于判断返回值为Json或Json&的方法是否调用失败
+
 	class Iterator
 	{
 	public:
@@ -82,11 +87,14 @@ public:
 		Iterator &operator=(const Json &json);
 		Iterator &operator=(bool val);
 		Iterator &operator=(double val);
+		Iterator &operator=(int val);
 		Iterator &operator=(const String &val);
 		Iterator &operator=(const char *val);
 		Iterator &operator=(const JsonArray &val);
 
 		Iterator operator[](const String &key);	// 强行插入，如果原先不是JSON_OBJECT对象会强行转换并清除原先数据，如果原先不存在该对象会创建
+
+		JsonArray toArray();
 
 	private:
 		Json *m_j;
@@ -100,6 +108,7 @@ public:
 	Json &operator=(const Json &json);
 	Json &operator=(bool val);
 	Json &operator=(double val);
+	Json &operator=(int val);
 	Json &operator=(const String &val);
 	Json &operator=(const char *val);
 	Json &operator=(const JsonArray &val);
