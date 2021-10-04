@@ -3,7 +3,7 @@
 
 /*
  * 作者: Eyre Turing (Eyre-Turing)
- * 最后编辑于: 2021/09/25 11:25
+ * 最后编辑于: 2021/10/04 11:25
  */
 
 Json JsonNone = Json::null();
@@ -386,7 +386,7 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 {
 	size_t len = text.size();
 	for (; beg < len && (text.at(beg) == ' ' || text.at(beg) == '\n' || text.at(beg) == '\r' || text.at(beg) == ','); ++beg);	// 忽略空格、换行、逗号
-	if (beg == len)	// 没有正文
+	if (beg >= len)	// 没有正文
 	{
 		return JsonNone;
 	}
@@ -490,7 +490,7 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 				break;
 			}
 		}
-		if (e == len)
+		if (e >= len)
 		{
 			// 双引号不匹配，文本不正常
 			if (endpos)
@@ -509,7 +509,7 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 	{
 		size_t e;
 		for (e = beg; e < len && ((text.at(e) >= '0' && text.at(e) <= '9') || text.at(e) == '.'); ++e);
-		if (e == len)
+		if (e >= len)
 		{
 			if (endpos)
 			{

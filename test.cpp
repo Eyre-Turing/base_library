@@ -11,7 +11,7 @@ using namespace std;
 #define JSON_TEST	4
 
 #ifndef USE_FOR
-#define USE_FOR		JSON_TEST
+#define USE_FOR		NOTHING
 #endif
 
 #if (USE_FOR == TCP_SERVER)
