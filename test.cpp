@@ -206,11 +206,11 @@ int main()
 	cout << "JsonNone.isNull(): " << JsonNone.isNull() << endl;
 	cout << String("对常量进行赋值，检查对常量赋值的无效性:") << endl;
 	JsonNone = 1;
-	cout << "执行 JsonNone = 1 后 JsonNone: " << JsonNone << endl;
+	cout << String("执行 JsonNone = 1 后 JsonNone: ") << JsonNone << endl;
 	JsonNone["a"] = 1;
-	cout << "执行 JsonNone[\"a\"] = 1 后 JsonNone: " << JsonNone << endl;
+	cout << String("执行 JsonNone[\"a\"] = 1 后 JsonNone: ") << JsonNone << endl;
 	JsonNone["a"]["b"] = 1;
-	cout << "执行 JsonNone[\"a\"][\"b\"] = 1 后 JsonNone: " << JsonNone << endl;
+	cout << String("执行 JsonNone[\"a\"][\"b\"] = 1 后 JsonNone: ") << JsonNone << endl;
 
 	cout << String("JSON赋值测试") << endl;
 	Json json = JsonNone;
@@ -244,7 +244,7 @@ int main()
 
 	File fileWrite("test.json");
 	fileWrite.open(FILE_OPEN_MODE_Write);
-	fileWrite.write(ByteArray::fromString(json.toString(true)));
+	fileWrite.write(ByteArray::fromString(json.toString(false)));
 	fileWrite.close();
 
 	cout << "json.com.github.www.description: " << endl;

@@ -405,7 +405,7 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 	if (text.at(beg) == '{')	// 扫描直到遇到 } 完成数据解析（因为用递归的方法去做，所有即使内部也有若干{ }，也是在递归里就完成了，在最外层匹配到的第一个 } 就会是结束标志了）
 	{
 		json.asObject();
-		for (++beg; beg < len && text.at(beg) != '}'; ++beg)
+		for (++beg; beg < len && text.at(beg) != '}';)
 		{
 			if (text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r' && text.at(beg) != ',')	// 忽略空格、换行、逗号
 			{
@@ -440,27 +440,35 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 				}
 				json[key] = parseFromText(text, e+1, &beg);		// 这里会刷新beg的值，文本偏移将直接跳转到子json的后面
 			}
+			else
+			{
+				++beg;
+			}
 		}
 		if (endpos)
 		{
-			*endpos = beg;
+			*endpos = beg+1;
 		}
 	}
 	else if (text.at(beg) == '[')	// 扫描直到遇到 ]
 	{
 		json.asArray();
 		JsonArray jsonArray = json.toArray();
-		for (++beg; beg < len && text.at(beg) != ']'; ++beg)
+		for (++beg; beg < len && text.at(beg) != ']';)
 		{
 			if (text.at(beg) != ' ' && text.at(beg) != '\n' && text.at(beg) != '\r' && text.at(beg) != ',')	// 忽略空格、换行、逗号
 			{
 				// 直接匹配子json
 				jsonArray.append(parseFromText(text, beg, &beg));
 			}
+			else
+			{
+				++beg;
+			}
 		}
 		if (endpos)
 		{
-			*endpos = beg;
+			*endpos = beg+1;
 		}
 	}
 	else if (text.at(beg) == '\"')	// 匹配直到 " ，遇到转义的双引号要继续往下获取
