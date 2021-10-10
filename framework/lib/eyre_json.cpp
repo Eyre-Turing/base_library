@@ -419,16 +419,36 @@ Json Json::parseFromText(const String &text, size_t beg, size_t *endpos)
 					}
 					return JsonNone;
 				}
-				size_t e = text.indexOf("\"", beg+1);
-				if (e == -1)	// 双引号不匹配，文本不正常
+				
+				// 通过逐个提取的方式，解决键里有转义双引号导致读取“翻车”的问题
+				size_t e;
+				bool en = false;	// 当前文本是否进入转义状态
+				for (e = beg+1; e < len; ++e)
 				{
+					if (en)	// 转义状态
+					{
+						en = false;	// 转义状态遇到什么字符都不需要理会，取消转义状态即可
+					}
+					else if (text.at(e) == '\\')	// 非转义状态遇到转义标志字符
+					{
+						en = true;	// 进入转义状态
+					}
+					else if (text.at(e) == '\"')	// 非转义状态遇到 "
+					{
+						break;
+					}
+				}
+				if (e >= len)
+				{
+					// 双引号不匹配，文本不正常
 					if (endpos)
 					{
 						*endpos = len;
 					}
 					return JsonNone;
 				}
-				String key = text.mid(beg+1, e-beg-1);	// 得到键
+
+				String key = descript(text.mid(beg+1, e-beg-1));	// 得到键
 				e = text.indexOf(":", e+1);	// 找 : 这是值开始的标志
 				if (e == -1)	// 键后面没有 : ，文本不正常
 				{
@@ -625,7 +645,7 @@ String Json::toString(bool fold, size_t dep, size_t space) const
 			{
 				str += pad(dep+1, space);
 			}
-			str += "\""+it->first+"\":";
+			str += "\""+escape(it->first)+"\":";	// 写出文件时，如果键有特殊字符，可能会导致“翻车”，所以转义一下
 			if (fold)
 			{
 				str += " ";
@@ -1034,14 +1054,14 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 	switch (json.m_type)
 	{
 	case JSON_NULL:
-		out << "none";		// JSON_NULL也显示成none，因为JSON_NULL只是用于方法调用失败时的异常返回值而已，并不是真正意义上的一个类型
+		out << "null";		// JSON_NULL也显示成none，因为JSON_NULL只是用于方法调用失败时的异常返回值而已，并不是真正意义上的一个类型
 		if (currentOutputJsonDepth > 0)
 		{
 			out << "\n";
 		}
 		break;
 	case JSON_NONE:
-		out << "none";
+		out << "null";
 		if (currentOutputJsonDepth > 0)
 		{
 			out << "\n";
@@ -1109,7 +1129,7 @@ std::ostream &operator<<(std::ostream &out, const Json &json)
 			{
 				out << " ";
 			}
-			out << keys[i] << ": ";
+			out << "\"" << Json::escape(keys[i]) << "\"" << ": ";
 			++currentOutputJsonDepth;
 			out << json[keys[i]];
 			--currentOutputJsonDepth;

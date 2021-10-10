@@ -221,7 +221,7 @@ int main()
 	json["pi"] = 3.14;	// 因为之前设置json = 1时，会把json的类型设置为JSON_NUMBER，所以这步操作必定是失败的
 	cout << json << endl;
 	json.asObject();
-	json["math"] = "数学";	// 因为之前设置json = 1时，会把json的类型设置为JSON_NUMBER，所以这步操作必定是失败的
+	json["math"] = "数学";	// 用asObject()后，就可以作为字典类型赋值了
 	cout << json << endl;
 	json["math"]["pi"] = 3.14;	// 强行赋值（方括号超过一个就会使用强行赋值）,如果发生冲突（比如这里math字段是字符串类型，但是这个操作会强行把math字段转成JSON_NONE类型）
 	cout << json << endl;
@@ -287,6 +287,32 @@ int main()
 	json = Json::parseFromText(jsonStr);
 
 	cout << json << endl;
+
+	cout << String("带有特殊键的JSON测试") << endl;
+	json = JsonNone;
+	json["aaa\nbbb"] = "特殊键使用-带有换行符";
+	json["#include \"eyre_json.h\""] = "特殊键使用-带有双引号";
+	cout << json << endl;
+	cout << json.toString() << endl;
+	fileWrite.setFilename("esckeytest.json");
+	fileWrite.open(FILE_OPEN_MODE_Write);
+	fileWrite.write(ByteArray::fromString(json.toString(true)));
+	fileWrite.close();
+
+	fileRead.setFilename("esckeytest.json");
+	fileRead.open(FILE_OPEN_MODE_Read);
+	jsonStr = fileRead.readAll().toString();
+	fileRead.close();
+
+	json = 1;
+	cout << json << endl;
+
+	json = Json::parseFromText(jsonStr);
+	cout << json << endl;
+	cout << json.toString() << endl;
+
+	cout << String("输出所有的键:") << endl;
+	cout << json.keys() << endl;
 
 	return 0;
 }
