@@ -203,7 +203,7 @@ bool PIO::terminal_create(const char *path, char *const argv[], char *const envp
  * @brief 创建虚拟终端
  * @return bool 成功返回true，失败返回false（之前已经打开也会返回false）
  */
-bool PIO::terminal_create(void (*callback)(void *), void *arg)
+bool PIO::terminal_create(void (*callback)(void *), void *arg, void (*settings)(int))
 {
 	if (is_open)
 	{
@@ -255,6 +255,12 @@ bool PIO::terminal_create(void (*callback)(void *), void *arg)
 		{
 			ret = false;
 			exit(0);
+		}
+
+		// 用户自定义设置
+		if (settings)
+		{
+			settings(slave);
 		}
 		
 		// 重定向从终端输入输出

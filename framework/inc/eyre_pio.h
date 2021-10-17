@@ -14,7 +14,7 @@ public:
 	PIO();
 	virtual ~PIO();
 	
-	bool terminal_create(void (*callback)(void *), void *arg);
+	bool terminal_create(void (*callback)(void *), void *arg, void (*settings)(int) = NULL);
 	bool terminal_create();
 	bool terminal_create(const char *path, char *const argv[]);
 	bool terminal_create(const char *path, char *const argv[], char *const envp[]);
