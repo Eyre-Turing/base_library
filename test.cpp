@@ -9,6 +9,7 @@ using namespace std;
 #define TCP_CLIENT	2
 #define UDP			3
 #define JSON_TEST	4
+#define TERM_TEST	5
 
 #ifndef USE_FOR
 #define USE_FOR		NOTHING
@@ -316,6 +317,46 @@ int main()
 
 	return 0;
 }
+#elif (USE_FOR == TERM_TEST)
+#ifdef linux
+void output(string msg)
+{
+	cout << msg << flush;
+}
+
+int main()
+{
+	String::setAutoCodec(CODEC_UTF8);
+	cout << String("虚拟终端模块") << endl;
+	PIO pio;
+	pio.set_output_callback(output);
+	if (!pio.terminal_create())
+	{
+		cout << String("创建失败") << endl;
+		return -1;
+	}
+	cout << String("虚拟终端创建完成") << endl;
+	string cmdline;
+	while (getline(cin, cmdline))
+	{
+		if (cmdline == "logout" || cmdline == "exit")
+		{
+			break;
+		}
+		pio.input_command(cmdline+"\n");
+	}
+	cout << String("虚拟终端退出") << endl;
+	
+	return 0;
+}
+#else	// ! linux
+int main()
+{
+	String::setAutoCodec(CODEC_UTF8);
+	cout << String("非Linux系统不支持虚拟终端模块") << endl;
+	return 0;
+}
+#endif	// end of ! linux
 #else
 int main()
 {
