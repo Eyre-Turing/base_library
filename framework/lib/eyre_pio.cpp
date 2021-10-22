@@ -3,6 +3,7 @@
 #include "eyre_pio.h"
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <signal.h>
 #include <unistd.h>
@@ -11,6 +12,13 @@
 #include <string.h>
 
 using namespace std;
+
+struct winsize PIO::term_size;
+
+void pio_update_term_size()
+{
+	ioctl(STDIN_FILENO, TIOCGWINSZ, &(PIO::term_size));
+}
 
 void *PIO::Thread::terminal_input(void *p)
 {
@@ -48,7 +56,7 @@ void *PIO::Thread::terminal_output(void *p)
 		toutput[nread] = '\0';
 		if (pio->m_output_message)
 		{
-			pio->m_output_message(string(toutput));
+			pio->m_output_message(pio, string(toutput));
 		}
 	}
 	
@@ -197,6 +205,11 @@ bool PIO::terminal_create(const char *path, char *const argv[], char *const envp
 	}
 	free(args.envp);
 	return ret;
+}
+
+void pio_settings_local_winsize(int slave)
+{
+	ioctl(slave, TIOCSWINSZ, &(PIO::term_size));
 }
 
 /*

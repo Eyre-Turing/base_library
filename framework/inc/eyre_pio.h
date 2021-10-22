@@ -10,7 +10,7 @@
 class PIO
 {
 public:
-	typedef void (*OutputMessage)(std::string message);
+	typedef void (*OutputMessage)(PIO *p, std::string message);
 	PIO();
 	virtual ~PIO();
 	
@@ -22,6 +22,8 @@ public:
 	
 	void input_command(const std::string &command);
 	void set_output_callback(OutputMessage output);
+
+	static struct winsize term_size;
 	
 	class Thread
 	{
@@ -44,6 +46,9 @@ private:
 	
 	bool create_pty();
 };
+
+void pio_update_term_size();
+void pio_settings_local_winsize(int slave);
 
 #endif
 

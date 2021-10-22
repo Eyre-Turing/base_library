@@ -319,23 +319,114 @@ int main()
 }
 #elif (USE_FOR == TERM_TEST)
 #ifdef linux
-void output(string msg)
+#include <getopt.h>
+int connectStatus = 0;
+String user = "root", addr = "127.0.0.1", password = "", port = "22";
+void output(PIO *p, string msg)
 {
+	/*
+	 * 一般来说，SSH连接，对端可能会传来这三种文本：
+	 * 1、确认是否连接
+	 * The authenticity of host 'XX.XX.XX.XX (XX.XX.XX.XX)' can't be established.
+	 * ECDSA key fingerprint is SHA256:XXXX.
+	 * ECDSA key fingerprint is MD5:XXXX.
+	 * Are you sure you want to continue connecting (yes/no)?
+	 * 
+	 * 2、输入密码
+	 * Warning: Permanently added 'XX.XX.XX.XX' (ECDSA) to the list of known hosts.
+	 * XX@XX.XX.XX.XX's password:
+	 * 
+	 * 3、成功
+	 * Last login: xxxx
+	 * 或
+	 * Last failed login: xxxx
+	 */
+
+	if (connectStatus > 0)
+	{
+		String resp = msg.data();
+		if (resp.indexOf("(yes/no)?") != -1)
+		{
+			p->input_command("yes\n");
+			return ;
+		}
+		else if (resp.indexOf("password:") != -1)
+		{
+			if (connectStatus == 1)	// 第一次
+			{
+				p->input_command((char *) (password+"\n"));
+				connectStatus = 2;
+			}
+			else
+			{
+				connectStatus = -1;
+			}
+			return ;
+		}
+		else if (resp.indexOf("Last login:") != -1 || resp.indexOf("Last failed login:") != -1)
+		{
+			connectStatus = 0;
+		}
+	}
+
 	cout << msg << flush;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	String::setAutoCodec(CODEC_UTF8);
+	const struct option opts[] = {
+		{"user", 1, 0, 'u'},
+		{"addr", 1, 0, 'a'},
+		{"password", 1, 0, 'P'},
+		{"port", 1, 0, 'p'},
+		{0, 0, 0, 0}
+	};
+	int option_index;
+	char opt;
+	extern char *optarg;
+	extern int optind, opterr, optopt;
+	while ((opt = getopt_long(argc, argv, "u:a:P:p:", opts, &option_index)) != -1)
+	{
+		switch (opt)
+		{
+		case 'u':
+			user = optarg;
+			break;
+		case 'a':
+			addr = optarg;
+			break;
+		case 'P':
+			password = optarg;
+			break;
+		case 'p':
+			port = optarg;
+			break;
+		default:
+			cout << String("无效的参数") << endl;
+			return -1;
+		}
+	}
 	cout << String("虚拟终端模块") << endl;
 	PIO pio;
 	pio.set_output_callback(output);
-	if (!pio.terminal_create())
+	String user_and_addr = user+"@"+addr;
+	char *term_args[] = {"ssh", (char *) user_and_addr, "-p", (char *) port, NULL};
+	cout << String("参数: ") << user_and_addr << String(", 端口: ") << port << endl;
+	connectStatus = 1;
+	if (!pio.terminal_create("/usr/bin/ssh", term_args))
 	{
-		cout << String("创建失败") << endl;
+		cout << String("虚拟终端创建失败") << endl;
 		return -1;
 	}
-	cout << String("虚拟终端创建完成") << endl;
+	cout << String("虚拟终端创建完成，连接到ssh，正在自动输入密码") << endl;
+	while (connectStatus > 0);
+	if (connectStatus == -1)
+	{
+		cout << String("密码错误") << endl;
+		return -2;
+	}
+	cout << String("密码输入完成，可以使用了") << endl;
 	string cmdline;
 	while (getline(cin, cmdline))
 	{
