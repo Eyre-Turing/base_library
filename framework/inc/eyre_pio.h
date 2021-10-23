@@ -23,6 +23,9 @@ public:
 	void input_command(const std::string &command);
 	void set_output_callback(OutputMessage output);
 
+	void send_no_echo_command();	// 让终端界面不回显
+	void send_echo_command();		// 让终端界面回显
+
 	static struct winsize term_size;
 	
 	class Thread
@@ -47,8 +50,8 @@ private:
 	bool create_pty();
 };
 
-void pio_update_term_size();
-void pio_settings_local_winsize(int slave);
+void pio_update_term_size();					// 调用该函数会更新 `local_winsize' ，之后调用 pio_settings_local_winsize 就会用当前终端的尺寸
+void pio_settings_local_winsize(int slave);		// 可以用做调用 terminal_create(void (*callback)(void *), void (*settings)(int)) 时的 settings 参数
 
 #endif
 

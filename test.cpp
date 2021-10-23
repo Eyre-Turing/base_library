@@ -321,7 +321,7 @@ int main()
 #ifdef linux
 #include <getopt.h>
 int connectStatus = 0;
-String user = "root", addr = "127.0.0.1", password = "", port = "22";
+String user = "root", addr = "", password = "", port = "22";
 void output(PIO *p, string msg)
 {
 	/*
@@ -348,7 +348,6 @@ void output(PIO *p, string msg)
 		if (resp.indexOf("(yes/no)?") != -1)
 		{
 			p->input_command("yes\n");
-			return ;
 		}
 		else if (resp.indexOf("password:") != -1)
 		{
@@ -361,15 +360,22 @@ void output(PIO *p, string msg)
 			{
 				connectStatus = -1;
 			}
-			return ;
 		}
 		else if (resp.indexOf("Last login:") != -1 || resp.indexOf("Last failed login:") != -1)
+		{
+			cout << msg << flush;	// 登录消息显示出来
+			connectStatus = 3;		// 通过不直接赋值为0的方式，让send_no_echo_command函数命令不被回显出来
+			p->send_no_echo_command();	// 去除回显
+		}
+		else if (connectStatus == 3)
 		{
 			connectStatus = 0;
 		}
 	}
-
-	cout << msg << flush;
+	else
+	{
+		cout << msg << flush;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -386,7 +392,7 @@ int main(int argc, char *argv[])
 	char opt;
 	extern char *optarg;
 	extern int optind, opterr, optopt;
-	while ((opt = getopt_long(argc, argv, "u:a:P:p:", opts, &option_index)) != -1)
+	while ((opt = getopt_long(argc, argv, "u:a:P:p:", opts, &option_index)) != (char) (-1))
 	{
 		switch (opt)
 		{
@@ -410,23 +416,34 @@ int main(int argc, char *argv[])
 	cout << String("虚拟终端模块") << endl;
 	PIO pio;
 	pio.set_output_callback(output);
-	String user_and_addr = user+"@"+addr;
-	char *term_args[] = {"ssh", (char *) user_and_addr, "-p", (char *) port, NULL};
-	cout << String("参数: ") << user_and_addr << String(", 端口: ") << port << endl;
-	connectStatus = 1;
-	if (!pio.terminal_create("/usr/bin/ssh", term_args))
+	if (addr != "")	// ssh 模式
 	{
-		cout << String("虚拟终端创建失败") << endl;
-		return -1;
+		String user_and_addr = user+"@"+addr;
+		char *term_args[] = {"ssh", (char *) user_and_addr, "-p", (char *) port, NULL};
+		connectStatus = 1;
+		if (!pio.terminal_create("/usr/bin/ssh", term_args))
+		{
+			cout << String("虚拟终端创建失败") << endl;
+			return -1;
+		}
+		cout << String("虚拟终端创建完成，连接到ssh，正在自动输入密码") << endl;
+		while (connectStatus > 0);
+		if (connectStatus == -1)
+		{
+			cout << String("密码错误") << endl;
+			return -2;
+		}
+		cout << String("密码输入完成，可以使用了") << endl;
 	}
-	cout << String("虚拟终端创建完成，连接到ssh，正在自动输入密码") << endl;
-	while (connectStatus > 0);
-	if (connectStatus == -1)
+	else
 	{
-		cout << String("密码错误") << endl;
-		return -2;
+		if (!pio.terminal_create())
+		{
+			cout << String("虚拟终端创建失败") << endl;
+			return -1;
+		}
+		cout << String("虚拟终端创建完成，可以使用了") << endl;
 	}
-	cout << String("密码输入完成，可以使用了") << endl;
 	string cmdline;
 	while (getline(cin, cmdline))
 	{

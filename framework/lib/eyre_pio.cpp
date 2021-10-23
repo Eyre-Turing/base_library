@@ -162,7 +162,8 @@ bool PIO::terminal_create(const char *path, char *const argv[])
 	}
 	args.argv[len] = NULL;
 	args.envp = NULL;
-	bool ret = terminal_create(open_app_with_local_env, (void *) &args);
+	pio_update_term_size();
+	bool ret = terminal_create(open_app_with_local_env, (void *) &args, pio_settings_local_winsize);
 	free(args.path);
 	for (int i=0; i<len; ++i)
 	{
@@ -192,7 +193,8 @@ bool PIO::terminal_create(const char *path, char *const argv[], char *const envp
 		args.envp[i] = strdup(envp[i]);
 	}
 	args.envp[lenp] = NULL;
-	bool ret = terminal_create(open_app_appoint_env, (void *) &args);
+	pio_update_term_size();
+	bool ret = terminal_create(open_app_appoint_env, (void *) &args, pio_settings_local_winsize);
 	free(args.path);
 	for (int i=0; i<len; ++i)
 	{
@@ -331,6 +333,16 @@ void PIO::input_command(const string &command)
 	pthread_mutex_lock(&md_input);
 	d_input.push(command);
 	pthread_mutex_unlock(&md_input);
+}
+
+void PIO::send_no_echo_command()
+{
+	input_command("stty -echo\n");
+}
+
+void PIO::send_echo_command()
+{
+	input_command("stty echo\n");
 }
 
 #endif
