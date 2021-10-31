@@ -1,10 +1,11 @@
-#include "eyre_json.h"
-#include "general.h"
-
 /*
  * 作者: Eyre Turing (Eyre-Turing)
- * 最后编辑于: 2021/10/04 11:25
+ * 最后编辑于: 2021-10-31 11:35
  */
+
+#include "eyre_json.h"
+#include "general.h"
+#include <math.h>
 
 Json JsonNone = Json::null();
 Json::Iterator JsonIteratorNone;
@@ -679,7 +680,14 @@ String Json::toString(bool fold, size_t dep, size_t space) const
 			}
 			break;
 		case JSON_NUMBER:
-			str += String::fromNumber(m_numval);
+			if (m_numval - floor(m_numval) < 1e-9)		// 判定为整数
+			{
+				str += String::fromNumber((long long) m_numval);
+			}
+			else
+			{
+				str += String::fromNumber(m_numval);
+			}
 			break;
 		case JSON_STRING:
 			str += "\""+escape(m_strval)+"\"";
@@ -891,6 +899,11 @@ JsonArray Json::Iterator::toArray()
 	return ((Json &)(*this)).toArray();
 }
 
+bool Json::Iterator::isNull() const
+{
+	return m_j == NULL;
+}
+
 static std::map<char, String> genEscapeMethod()
 {
 	std::map<char, String> result;
@@ -1044,6 +1057,11 @@ JsonArray &JsonArray::operator=(const JsonArray &jsonArray)
 {
 	m_json->asArray(jsonArray);
 	return *this;
+}
+
+bool JsonArray::isNull() const
+{
+	return m_json->isNull();
 }
 
 static size_t currentOutputJsonDepth = 0;	// 当前输出json到哪一层了

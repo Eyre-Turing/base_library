@@ -7,7 +7,7 @@
  * 内部实现全是深复制，不存在两个及以上json同时引用同一个内存地址的情况
  * 
  * 作者: Eyre Turing (Eyre-Turing)
- * 最后编辑于: 2021-09-25 11:24
+ * 最后编辑于: 2021-10-31 11:35
  */
 
 #include <vector>
@@ -97,6 +97,8 @@ public:
 
 		JsonArray toArray();
 
+		bool isNull() const;
+
 	private:
 		Json *m_j;
 		std::map<String, Json *>::iterator m_it;
@@ -155,6 +157,8 @@ public:
 	JsonArray &operator=(const JsonArray &jsonArray);
 
 	friend std::ostream &operator<<(std::ostream &out, const JsonArray &jsonArray);
+
+	bool isNull() const;
 
 	friend class Json;
 

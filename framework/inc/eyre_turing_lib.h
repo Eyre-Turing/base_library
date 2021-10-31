@@ -7,5 +7,6 @@
 #include "ini_settings.h"
 #include "eyre_json.h"
 #include "eyre_pio.h"
+#include "eyre_settings.h"
 
 #endif	//EYRE_TURING_LIB_H

@@ -10,6 +10,7 @@ using namespace std;
 #define UDP			3
 #define JSON_TEST	4
 #define TERM_TEST	5
+#define SETTINGS	6
 
 #ifndef USE_FOR
 #define USE_FOR		NOTHING
@@ -465,6 +466,14 @@ int main()
 	return 0;
 }
 #endif	// end of ! linux
+#elif (USE_FOR == SETTINGS) || 1
+int main()
+{
+	String::setAutoCodec(CODEC_UTF8);
+	Settings settings("testsettings.json");
+	settings["Author"] = "Eyre Turing";
+	return 0;
+}
 #else
 int main()
 {
