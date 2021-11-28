@@ -36,7 +36,7 @@ void SettingsParse::setSep(char sep)
 	m_sep = sep;
 }
 
-static Json *enterKey(Json *ret, const String &currentKey, bool touch)
+static Json *enterKey(Json *&ret, const String &currentKey, bool touch)
 {
 	if (ret == NULL)
 	{
@@ -63,7 +63,7 @@ static Json *enterKey(Json *ret, const String &currentKey, bool touch)
 	return ret;
 }
 
-static Json *enterKey(Json *ret, unsigned int idx, bool touch)
+static Json *enterKey(Json *&ret, unsigned int idx, bool touch)
 {
 	if (ret == NULL)
 	{
@@ -161,7 +161,7 @@ Json *SettingsParse::parseKey(Json *json, const String &key, bool touch, String 
 						}
 					}
 					currentKey = "";
-					for (; i < len && key.at(i) != ']'; ++i)
+					for (++i; i < len && key.at(i) != ']'; ++i)
 					{
 						currentKey += key.at(i);
 					}
@@ -228,7 +228,24 @@ bool SettingsParse::Iterator::removeKey()
 		{
 			return false;
 		}
-		return m_parse->parent().remove(m_lastKey);
+		bool status = false;
+		if (m_parse->parent().type() == JSON_OBJECT)
+		{
+			status = m_parse->parent().remove(m_lastKey);
+		}
+		else if (m_parse->parent().type() == JSON_ARRAY)
+		{
+			status = m_parse->parent().toArray().remove(m_lastKey.toUInt());
+		}
+		if (status)
+		{
+			if (m_sp && m_sp->m_s)
+			{
+				return m_sp->m_s->save();
+			}
+			return true;
+		}
+		return false;
 	}
 	else
 	{

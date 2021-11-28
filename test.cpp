@@ -466,12 +466,45 @@ int main()
 	return 0;
 }
 #endif	// end of ! linux
-#elif (USE_FOR == SETTINGS) || 1
+#elif (USE_FOR == SETTINGS)
 int main()
 {
 	String::setAutoCodec(CODEC_UTF8);
 	Settings settings("testsettings.json");
-	settings["Author"] = "Eyre Turing";
+
+	settings["Author/Name"] = "Eyre Turing";
+	settings["Author/Birthday"] = "06-11";
+	settings["Author/Password"] = "敏感数据，将删除";
+	settings["Author/Friend[0]/Name"] = "hwr";
+	settings["Author/Friend[0]/Type"] = "女朋友";
+	settings["Author/Friend[1]/Name"] = "wxc";
+	settings["Author/Friend[1]/Type"] = "学弟";
+	settings["Author/Friend[2]/Name"] = "Linus";
+	settings["Author/Friend[2]/Type"] = "Linux内核的作者，并不是我朋友，将删除该数据";
+
+	settings["Author/Be-good-at[0]/Type"] = "编程";
+	settings["Author/Be-good-at[0]/Detail[0]/Language"] = "C";
+	settings["Author/Be-good-at[0]/Detail[0]/Degree"] = "强到逆天";
+	settings["Author/Be-good-at[0]/Detail[1]/Language"] = "C++";
+	settings["Author/Be-good-at[0]/Detail[1]/Degree"] = "强到逆天";
+	settings["Author/Be-good-at[0]/Detail[2]/Language"] = "Python";
+	settings["Author/Be-good-at[0]/Detail[2]/Degree"] = "一般一般，世界第三";
+	settings["Author/Be-good-at[0]/Detail[3]/Language"] = "Bash";
+	settings["Author/Be-good-at[0]/Detail[3]/Degree"] = "刚学没多久，就只会写个操作系统这种简单的东西";
+	settings["Author/Be-good-at[0]/Detail[4]/Language"] = "Java";
+	settings["Author/Be-good-at[0]/Detail[4]/Degree"] = "不太擅长，只是不用看文档就可以手撸JVM那一套";
+	settings["Author/Be-good-at[0]/Detail[5]/Language"] = "Go";
+	settings["Author/Be-good-at[0]/Detail[5]/Degree"] = "不是太会，就只会随随便便写个像B站那样简单的后台";
+
+	settings["Author/Password"].remove();
+	settings["Author/Friend[2]"].removeKey();
+
+	cout << String("作者全部信息:\n") << settings["Author"] << endl;
+
+	cout << String("作者姓名: ") << settings["Author/Name"] << endl;
+	cout << String("作者的第一个朋友信息:\n") << settings["Author/Friend[0]"] << endl;
+	cout << String("作者的第二个朋友信息:\n") << settings["Author/Friend[1]"] << endl;
+	cout << String("作者的第三个朋友信息:\n") << settings["Author/Friend[2]"] << endl;
 	return 0;
 }
 #else

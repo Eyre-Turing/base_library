@@ -30,6 +30,7 @@ void Json::asObject(const Json &json, Json *parent)
 	{
 		return ;
 	}
+	cleanOldTypeData();
 	m_parent = parent;
 	m_type = json.m_type;
 	if (m_type == JSON_NULL)	// 会影响使用方便性，替换为JSON_NONE
@@ -78,11 +79,13 @@ void Json::asObject(const Json &json, Json *parent)
 
 Json::Json(const Json &json, Json *parent)
 {
+	m_type = JSON_NONE;
 	asObject(json, parent);
 }
 
 Json::Json(const Json &json)
 {
+	m_type = JSON_NONE;
 	asObject(json, NULL);
 }
 
@@ -231,18 +234,19 @@ void Json::asObject()
 
 void Json::asObject(const Json &val)
 {
-	if (m_type == JSON_NULL)
-	{
-		return ;
-	}
-	asObject();
-	for (std::map<String, Json *>::const_iterator it = val.m_objval.begin();
-		it != val.m_objval.end();
-		++it)
-	{
-		m_type = JSON_OBJECT;	// 添加了数据，变为JSON_OBJECT状态
-		m_objval[it->first] = new Json(*(it->second), this);
-	}
+	asObject(val, m_parent);
+	// if (m_type == JSON_NULL)
+	// {
+	// 	return ;
+	// }
+	// asObject();
+	// for (std::map<String, Json *>::const_iterator it = val.m_objval.begin();
+	// 	it != val.m_objval.end();
+	// 	++it)
+	// {
+	// 	m_type = JSON_OBJECT;	// 添加了数据，变为JSON_OBJECT状态
+	// 	m_objval[it->first] = new Json(*(it->second), this);
+	// }
 }
 
 Json::Iterator Json::operator[](const String &key)
@@ -375,6 +379,7 @@ bool Json::remove(const String &key)
 	{
 		return false;
 	}
+	delete it->second;
 	m_objval.erase(it);
 	if (m_objval.empty())
 	{
@@ -1022,7 +1027,9 @@ bool JsonArray::remove(size_t index)
 	{
 		return false;
 	}
-	m_json->m_arrval.erase(m_json->m_arrval.begin()+index);
+	std::vector<Json *>::iterator it = m_json->m_arrval.begin()+index;
+	delete *it;
+	m_json->m_arrval.erase(it);
 	if (size() == 0)
 	{
 		m_json->m_type == JSON_NONE;
