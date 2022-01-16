@@ -102,6 +102,19 @@ bool SettingsParseIni::loadFromString(const String &text)
 String SettingsParseIni::saveToString() const
 {
 	String ret = "";
-	
+	// 因为ini格式只有2层的情况，所以只考虑2层的情况，其余的一律不保存出去
+	std::vector<String> keys = m_data.keys();
+	size_t cnt = keys.size();
+	for (size_t i = 0; i < cnt; ++i)
+	{
+		ret += "[" + Json::escape(keys[i]) + "]\n";
+		const Json &data = m_data[keys[i]];
+		std::vector<String> subkeys = data.keys();
+		size_t num = subkeys.size();
+		for (size_t j = 0; j < num; ++j)
+		{
+			ret += Json::escape(subkeys[j]) + "=" + data[subkeys[j]].toString() + "\n";
+		}
+	}
 	return ret;
 }

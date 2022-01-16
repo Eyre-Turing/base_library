@@ -68,11 +68,15 @@ public:
 	bool keyExist(const String &key) const;				// 判断键是否存在
 	int set(const String &key, const Json &val);		// 加入键值对，返回操作状态，将以复制val的形式加入
 	bool remove(const String &key);						// 删除键值对，this是json对象且key存在则删除并返回true，否则返回false
+
+	void append(const Json &json);		// 当类型为数组时添加元素的方法
+	bool remove(size_t index);			// 当类型为数组时删除元素的方法
 	
 	static Json parseFromText(const String &text, size_t beg = 0, size_t *endpos = NULL);	// 从文本解析json，beg为解析开始偏移位置，endpos为解析完毕后的偏移位置（不是相对beg的位置，而是按text的下标位置）
 	String toString(bool fold = false, size_t dep = 0, size_t space = 2) const;		// 输出为字符串，参数fold控制输出文本是否折行美化
 
 	std::vector<String> keys() const;
+	size_t size() const;
 
 	bool isNull() const;	// 是否是JSON_NULL类型，用于判断返回值为Json或Json&的方法是否调用失败
 
@@ -107,6 +111,9 @@ public:
 
 	Iterator operator[](const String &key);	// 返回key对应的子json对象
 	const Json &operator[](const String &key) const;
+
+	Json &operator[](size_t index);
+	const Json &operator[](size_t index) const;
 
 	Json &operator=(const Json &json);
 	Json &operator=(bool val);

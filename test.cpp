@@ -11,6 +11,7 @@ using namespace std;
 #define JSON_TEST	4
 #define TERM_TEST	5
 #define SETTINGS	6
+#define INI_TEST	7
 
 #ifndef USE_FOR
 #define USE_FOR		NOTHING
@@ -505,6 +506,19 @@ int main()
 	cout << String("作者的第一个朋友信息:\n") << settings["Author/Friend[0]"] << endl;
 	cout << String("作者的第二个朋友信息:\n") << settings["Author/Friend[1]"] << endl;
 	cout << String("作者的第三个朋友信息:\n") << settings["Author/Friend[2]"] << endl;
+	return 0;
+}
+#elif (USE_FOR == INI_TEST)
+#include "eyre_settings_parse.h"
+int main()
+{
+	String::setAutoCodec(CODEC_UTF8);
+	Settings settings("testini.ini", new SettingsParseIni());
+
+	settings["Author/Name"] = "Eyre Turing";
+	settings["Author/Birthday"] = "06-11";
+	settings["Date/Year"] = "2022";
+	
 	return 0;
 }
 #else

@@ -276,6 +276,24 @@ const Json &Json::operator[](const String &key) const
 	return *(it->second);
 }
 
+Json &Json::operator[](size_t index)
+{
+	if (index >= size())
+	{
+		return JsonNone;
+	}
+	return *(m_arrval[index]);
+}
+
+const Json &Json::operator[](size_t index) const
+{
+	if (index >= size())
+	{
+		return JsonNone;
+	}
+	return *(m_arrval[index]);
+}
+
 Json &Json::parent()
 {
 	if (!m_parent)
@@ -384,6 +402,32 @@ bool Json::remove(const String &key)
 	if (m_objval.empty())
 	{
 		m_type = JSON_NONE;		// 没有数据了，状态变更为JSON_NONE
+	}
+	return true;
+}
+
+void Json::append(const Json &json)
+{
+	if (m_type != JSON_ARRAY && m_type != JSON_NONE)
+	{
+		return ;
+	}
+	m_arrval.push_back(new Json(json, this));
+	m_type = JSON_ARRAY;	// 因为有数据了，所以类型修改为JSON_ARRAY
+}
+
+bool Json::remove(size_t index)
+{
+	if (index >= size())
+	{
+		return false;
+	}
+	std::vector<Json *>::iterator it = m_arrval.begin()+index;
+	delete *it;
+	m_arrval.erase(it);
+	if (size() == 0)
+	{
+		m_type == JSON_NONE;
 	}
 	return true;
 }
@@ -720,6 +764,15 @@ std::vector<String> Json::keys() const
 	return result;
 }
 
+size_t Json::size() const
+{
+	if (m_type != JSON_ARRAY && m_type != JSON_NONE)
+	{
+		return 0;
+	}
+	return m_arrval.size();
+}
+
 bool Json::isNull() const
 {
 	return m_type == JSON_NULL;
@@ -968,7 +1021,7 @@ String Json::descript(const String &str)
 				result += it->second;
 			}
 		}
-		else
+		else if (i < len && str.at(i) != '\"')	// 转义字符里不能出现非转义的双引号。如果出现，视为调用该函数时参数左右两边的双引号
 		{
 			result += str.at(i);
 		}
@@ -1004,37 +1057,42 @@ JsonArray::~JsonArray()
 
 size_t JsonArray::size() const
 {
-	if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
-	{
-		return 0;
-	}
-	return m_json->m_arrval.size();
+	// if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
+	// {
+	// 	return 0;
+	// }
+	// return m_json->m_arrval.size();
+
+	return m_json->size();
 }
 
 void JsonArray::append(const Json &json)
 {
-	if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
-	{
-		return ;
-	}
-	m_json->m_arrval.push_back(new Json(json, m_json));
-	m_json->m_type = JSON_ARRAY;	// 因为有数据了，所以类型修改为JSON_ARRAY
+	// if (m_json->m_type != JSON_ARRAY && m_json->m_type != JSON_NONE)
+	// {
+	// 	return ;
+	// }
+	// m_json->m_arrval.push_back(new Json(json, m_json));
+	// m_json->m_type = JSON_ARRAY;	// 因为有数据了，所以类型修改为JSON_ARRAY
+	m_json->append(json);
 }
 
 bool JsonArray::remove(size_t index)
 {
-	if (index >= size())
-	{
-		return false;
-	}
-	std::vector<Json *>::iterator it = m_json->m_arrval.begin()+index;
-	delete *it;
-	m_json->m_arrval.erase(it);
-	if (size() == 0)
-	{
-		m_json->m_type == JSON_NONE;
-	}
-	return true;
+	// if (index >= size())
+	// {
+	// 	return false;
+	// }
+	// std::vector<Json *>::iterator it = m_json->m_arrval.begin()+index;
+	// delete *it;
+	// m_json->m_arrval.erase(it);
+	// if (size() == 0)
+	// {
+	// 	m_json->m_type == JSON_NONE;
+	// }
+	// return true;
+
+	return m_json->remove(index);
 }
 
 Json &JsonArray::toJson()
@@ -1044,20 +1102,22 @@ Json &JsonArray::toJson()
 
 Json &JsonArray::operator[](size_t index)
 {
-	if (index >= size())
-	{
-		return JsonNone;
-	}
-	return *(m_json->m_arrval[index]);
+	// if (index >= size())
+	// {
+	// 	return JsonNone;
+	// }
+	// return *(m_json->m_arrval[index]);
+	return (*m_json)[index];
 }
 
 const Json &JsonArray::operator[](size_t index) const
 {
-	if (index >= size())
-	{
-		return JsonNone;
-	}
-	return *(m_json->m_arrval[index]);
+	// if (index >= size())
+	// {
+	// 	return JsonNone;
+	// }
+	// return *(m_json->m_arrval[index]);
+	return (*m_json)[index];
 }
 
 JsonArray &JsonArray::operator=(const JsonArray &jsonArray)
