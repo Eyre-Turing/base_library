@@ -81,6 +81,10 @@ bool SettingsParseIni::loadFromString(const String &text)
 					key += _text[idx];
 				}
 			}
+			if (_text[idx] != '=')
+			{
+				continue;
+			}
 			// 此时 key 为键名字
 			
 			int pos = _text.indexOf("\n", ++idx);

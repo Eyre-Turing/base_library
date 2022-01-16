@@ -506,6 +506,10 @@ int main()
 	cout << String("作者的第一个朋友信息:\n") << settings["Author/Friend[0]"] << endl;
 	cout << String("作者的第二个朋友信息:\n") << settings["Author/Friend[1]"] << endl;
 	cout << String("作者的第三个朋友信息:\n") << settings["Author/Friend[2]"] << endl;
+
+	Settings readSettings("testsettings.json");
+	cout << readSettings["Author"] << endl;
+
 	return 0;
 }
 #elif (USE_FOR == INI_TEST)
@@ -518,6 +522,9 @@ int main()
 	settings["Author/Name"] = "Eyre Turing";
 	settings["Author/Birthday"] = "06-11";
 	settings["Date/Year"] = "2022";
+
+	Settings readSettings("testini.ini", new SettingsParseIni());
+	cout << readSettings["Date"] << endl;
 	
 	return 0;
 }
