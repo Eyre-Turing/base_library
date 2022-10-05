@@ -270,9 +270,10 @@ int TcpServer::start(unsigned short port, int family, unsigned long addr, int ba
 	serverAddr.sin_port = htons(port);
 
 	// 套接字关闭则立即解除端口占用
-	char reuseaddr = 1;
-	if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) < 0)
+	int reuseaddr = 1;
+	if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseaddr, sizeof(reuseaddr)) < 0)
 	{
+		perror("setsockopt SO_REUSEADDR");
 #ifdef _WIN32
 		closesocket(m_sockfd);
 #else
